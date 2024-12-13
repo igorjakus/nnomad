@@ -68,9 +68,13 @@ let rec simplify = function
   | Div  (x, Float 1.) -> simplify x
   | Pow  (x, Float 1.) -> simplify x
 
+  (* Sort expressions *)
+  | Mult (x, Float y) -> Mult (Float y, simplify x)  (* prefer constant before other expr in multiplicaton *)
+  
   (* Unique function properties *)
   | Log (Exp x) -> simplify x
   | Exp (Log x) -> simplify x
+  | Sub (x, Float y) when y < 0. -> Add (x, Float (-.y))
 
   (* Recursively simplify subexpressions *)
   | Add  (a, b) -> Add (simplify a, simplify b)
@@ -122,8 +126,8 @@ let rec eval (env: env) (expr: expr): float =
 
 
 (* Computes the derivative of an expression with respect to a variable *)
-let rec derivative expr var =
-  match expr with
+let rec derivative expr var = simplify (
+  match simplify expr with
   | Float _ -> Float 0.
   | Var x when x = var -> Float 1.
   | Var _ -> Float 0.
@@ -142,6 +146,8 @@ let rec derivative expr var =
   | Log f -> derivative f var /: f                     (* Chain rule with log *)
   | Sin f -> Cos f *: derivative f var                 (* Chain rule with sin *)
   | Cos f -> Float (-1.) *: Sin f *: derivative f var  (* Chain rule with cos *)
+)
+
   
 
 (* Compute gradient as partial derivatives with respect to all variables *)

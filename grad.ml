@@ -99,7 +99,7 @@ let create_env (bindings: (string * float) list) =
 
 
 (* Update the environment with new variable values *)
-let update_env env updates =
+let update_env (env: env) (updates: (string * float) list) =
   List.fold_left
     (fun acc (var, value) -> StringMap.add var value acc)
     env updates
@@ -164,3 +164,45 @@ let rec nth_derivative expr var n =
   if n < 0 then invalid_arg "nth_derivative: negative order"
   else if n = 0 then expr
   else nth_derivative (derivative expr var) var (n - 1)
+
+
+(* Evaluates a gradient given an environment mapping variables to values *)
+let eval_grad env gradient =
+  List.map (fun (var, expr) -> (var, eval env expr)) gradient  
+
+
+(* GRADIENT DESCENT *)
+
+
+(* Compute new values for all variables based on gradients *)
+let calculate_updated_values ~expr ~env ~learning_rate =
+  let updated_value (var, f') = 
+    let f'_value = eval env f' in
+    let current_value = StringMap.find var env in
+    (var, current_value -. learning_rate *. f'_value)  (* x - lr * f'(env) *)
+  in
+  List.map updated_value (gradient expr)
+
+
+(* Perform one iteration of gradient descent *)
+let gradient_descent_step ~expr ~env ~learning_rate =
+  let updates = calculate_updated_values ~expr ~env ~learning_rate in
+  update_env env updates
+
+
+(* Perform gradient descent to minimize the expression *)
+let gradient_descent ~expr ~env ~learning_rate ~iterations =
+  let rec loop env i =
+    if i >= iterations then env
+    else loop (gradient_descent_step ~expr ~env ~learning_rate) (i + 1)
+  in
+  loop env 0
+
+
+let test_env () =
+  let env = create_env [("x", 2.0); ("y", 3.0)] in
+  let expr = Var "x" +: Var "y" in
+  assert (eval env expr = 5.0);
+  let env = update_env env [("x", 1.0)] in
+  assert (eval env expr = 4.0);
+  print_endline "All tests passed!"

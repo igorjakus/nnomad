@@ -35,59 +35,55 @@ let ( +: ) a b = Add (a, b)
 let ( -: ) a b = Sub (a, b)
 let ( *: ) a b = Mult (a, b)
 let ( /: ) a b = Div (a, b)
-let ( ^: ) x n = Pow (x, n)  
-let pow = ( ^: )
-let sin x = Sin x
-let cos x = Cos x
-let log x = Log x
-let exp x = Exp x 
-  
+let ( ^: ) x n = Pow (x, n)
+
 
 (* Simplifies expressions by applying basic algebraic rules *)
 let rec simplify = function
-  | Add  (Float 0., x) -> simplify x
-  | Add  (x, Float 0.) -> simplify x
-  | Sub  (x, Float 0.) -> simplify x
-  | Mult (Float 1., x) -> simplify x 
-  | Mult (x, Float 1.) -> simplify x
-  | Div  (x, Float 1.) -> simplify x
-  | Pow (x, Float 1.)  -> simplify x
+  (* Error handling *)
+  | Div (_, Float 0.) -> failwith "division by zero"
+  | Log (Float x) when x <= 0. -> failwith "log of non-positive number"
   
+  (* Calculating values*)
   | Mult (Float 0., _) -> Float 0.
   | Mult (_, Float 0.) -> Float 0.
-  | Div (Float 0., _)  -> Float 0.
-  | Pow (x, Float 0.) -> Float 1.
-
+  | Div  (Float 0., _) -> Float 0.
+  | Pow  (_, Float 0.) -> Float 1. 
   | Add  (Float a, Float b) -> Float (a +. b)
   | Sub  (Float a, Float b) -> Float (a -. b)
   | Mult (Float a, Float b) -> Float (a *. b)
   | Div  (Float a, Float b) -> Float (a /. b)
-  
-  (* error handling *)
-  | Div (_, Float 0.)  -> failwith "division by zero"
-  | Log (Float x ) -> 
-    if x < 0. then failwith "log of negative number" 
-    else Log (Float x)
-  (* TODO: expand these *)
+  | Pow  (Float a, Float b) -> Float (a ** b)
+  | Log (Float x) -> Float (log x)
+  | Exp (Float x) -> Float (exp x)
+  | Sin (Float x) -> Float (sin x)
+  | Cos (Float x) -> Float (cos x)
 
-  (* unique function properties *)
-  | Log (Exp(x)) -> simplify x
-  | Sin (Float 0.)     -> Float 0.
-  | Cos (Float 0.)     -> Float 1.
-  (* TODO: expand these *)
+  (* Trivial simplification *)
+  | Add  (Float 0., x) -> simplify x 
+  | Add  (x, Float 0.) -> simplify x
+  | Sub  (x, Float 0.) -> simplify x
+  | Mult (Float 1., x) -> simplify x
+  | Mult (x, Float 1.) -> simplify x
+  | Div  (x, Float 1.) -> simplify x
+  | Pow  (x, Float 1.) -> simplify x
 
-  (* recursively simplifying *)
+  (* Unique function properties *)
+  | Log (Exp x) -> simplify x
+  | Exp (Log x) -> simplify x
+
+  (* Recursively simplify subexpressions *)
   | Add  (a, b) -> Add (simplify a, simplify b)
   | Sub  (a, b) -> Sub (simplify a, simplify b)
   | Mult (a, b) -> Mult (simplify a, simplify b)
   | Div  (a, b) -> Div (simplify a, simplify b)
-  | Pow (x, n) -> Pow (simplify x, simplify n)
-  | Exp a -> Exp (simplify a)
-  | Log a -> Log (simplify a)
-  | Sin a -> Sin (simplify a)
-  | Cos a -> Cos (simplify a)
-  
-  (* base *)
+  | Pow  (a, b) -> Pow (simplify a, simplify b)
+  | Exp  a -> Exp (simplify a)
+  | Log  a -> Log (simplify a)
+  | Sin  a -> Sin (simplify a)
+  | Cos  a -> Cos (simplify a)
+
+  (* Base cases *)
   | Float x -> Float x
   | Var x -> Var x
 

@@ -93,14 +93,27 @@ let rec simplify = function
 
 
 (* Environment type for variable bindings *)
-type env = string -> float
+module StringMap = Map.Make(String)
+type env = float StringMap.t
+
+
+(* Create env from list of string * float pairs *)
+let create_env (bindings: (string * float) list) =
+  List.fold_left (fun acc (var, value) -> StringMap.add var value acc) StringMap.empty bindings
+
+
+(* Update the environment with new variable values *)
+let update_env env updates =
+  List.fold_left
+    (fun acc (var, value) -> StringMap.add var value acc)
+    env updates
 
 
 (* Evaluates an expression given an environment mapping variables to values *)
-let rec eval (env: string -> float) expr =
+let rec eval (env: env) (expr: expr): float =
   match simplify expr with
   | Float x -> x
-  | Var s -> env s
+  | Var s -> StringMap.find s env
   | Add (a, b)  -> eval env a +. eval env b
   | Sub (a, b)  -> eval env a -. eval env b
   | Mult (a, b) -> eval env a *. eval env b

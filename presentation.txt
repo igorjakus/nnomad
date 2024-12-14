@@ -1,0 +1,32 @@
+type expr =
+  | Float of float
+  | Var   of string           (* Named variable *)
+  | Add   of expr * expr      (* Addition *)
+  | Sub   of expr * expr      (* Subtraction *)
+  | Mult  of expr * expr      (* Multiplication *)
+  | Div   of expr * expr      (* Division *)
+  | Pow   of expr * expr      (* Power with constant exponent *)
+  | Exp   of expr             (* Exponential function *)
+  | Log   of expr             (* Natural logarithm *)
+  | Sin   of expr             (* Sine function *)
+  | Cos   of expr             (* Cosine function *)
+
+Jak uprościć wyrażenie?
+
+let simplify = function
+    (* Wypiszmy sobie zasady *)
+    | Add(x, y) -> Add(simplify x, simplify y)
+    | Mult(x, y) -> Mult(simplify x, simplify y)
+    (...)
+
+
+A co z Add(Var "x" - Float 0., Var "x" - Float 0.)?
+Chcelibysmy Mult(Float 2., Var "x")
+Jednoczesnie nie wpadajac w nieskonczona rekurencje
+
+
+Pochodna
+N-ta pochodna
+Gradient
+Gradient Descent
+co dalej?

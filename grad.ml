@@ -14,9 +14,10 @@ type expr =
   | Sin   of expr             (* Sine function *)
   | Cos   of expr             (* Cosine function *)
 
-  
+
 (* Convert expression to string for debugging and visualization *)
 let rec to_string = function
+  (* TODO: 1: zminimalizuj liczbe nawiasow, zeby zachowac jednoznacznosc reprezentacji *)
   | Float x -> string_of_float x
   | Var s -> s
   | Add (a, b)  -> "(" ^ to_string a ^ " + " ^ to_string b ^ ")"
@@ -40,6 +41,11 @@ let ( ^: ) x n = Pow (x, n)
 
 (* Simplifies expressions by applying basic algebraic rules *)
 let rec simplify = function
+  (* TODO: 2: make some order and enough comments but not too much, 
+  also ensure that it is always simplified maximally, 
+  like Log (expr) -> Log (simplify expr) but it can be sometimes simplified further,
+  by simplify Log (simplify expr), but we also want to ensure recursion ends *)
+  
   (* Error handling *)
   | Div (_, Float 0.) -> failwith "division by zero"
   | Log (Float x) when x <= 0. -> failwith "log of non-positive number"
@@ -75,6 +81,10 @@ let rec simplify = function
   | Log (Exp x) -> simplify x
   | Exp (Log x) -> simplify x
   | Sub (x, Float y) when y < 0. -> Add (x, Float (-.y))
+  | Add (x, y) when simplify x = simplify y -> Mult(Float 2., simplify x)
+  | Sub (x, y) when simplify x = simplify y -> Float 0.
+  | Mult(Pow (x, n), y) when x = y -> simplify (Pow(x, (n +: Float 1.)))
+  | Mult(y, Pow(x, n)) when x = y -> simplify (Pow(x, (n +: Float 1.)))
 
   (* Recursively simplify subexpressions *)
   | Add  (a, b) -> Add (simplify a, simplify b)
@@ -88,8 +98,14 @@ let rec simplify = function
   | Cos  a -> Cos (simplify a)
 
   (* Base cases *)
+  (* TODO: 2 maybe more base cases would be helpful for doing TODO: 2 *)
   | Float x -> Float x
   | Var x -> Var x
+
+
+(* TODO: 3 simplify pojawia sie mnostwo razy w funkcjach ponizej, czy da sie jakos tak zrobic,
+zeby nie powielac kodu? przy kazdej operacji chcmemy uzyc simplify wiec moze jakos to opakujemy w monade? 
+nie wime czy ma to sens *)
 
 
 (* Environment type for variable bindings *)
@@ -126,27 +142,31 @@ let rec eval (env: env) (expr: expr): float =
 
 
 (* Computes the derivative of an expression with respect to a variable *)
-let rec derivative expr var = simplify (
-  match simplify expr with
-  | Float _ -> Float 0.
-  | Var x when x = var -> Float 1.
-  | Var _ -> Float 0.
-  | Add (f, g) -> derivative f var +: derivative g var
-  | Sub (f, g) -> derivative f var -: derivative g var
-  | Mult (f, g) -> (derivative f var *: g) +: (f *: derivative g var)
-  | Div (f, g) ->
-      let num = (derivative f var *: g) -: (f *: derivative g var) in
-      let den = g *: g in
-      num /: den 
-  | Pow (f, n) ->
-      let n' = n -: Float 1. in 
-      let power = f ^: n' in
-      n *: power *: derivative f var
-  | Exp f -> Exp f *: derivative f var                 (* Chain rule with exp *)
-  | Log f -> derivative f var /: f                     (* Chain rule with log *)
-  | Sin f -> Cos f *: derivative f var                 (* Chain rule with sin *)
-  | Cos f -> Float (-1.) *: Sin f *: derivative f var  (* Chain rule with cos *)
-)
+(* TODO: 4: uzywanie simplify wyglada troche brzydko, moze da sie cos z tym zrobic? *)
+let rec derivative expr var = 
+  let f' =
+    match simplify expr with
+    | Float _ -> Float 0.
+    | Var x when x = var -> Float 1.
+    | Var _ -> Float 0.
+    | Add (f, g) -> derivative f var +: derivative g var
+    | Sub (f, g) -> derivative f var -: derivative g var
+    | Pow (Var x, Float n) -> Float n *: (Var x ^: Float (n -. 1.)) (* Simplified power rule *)
+    | Exp f -> Exp f *: derivative f var                 (* Chain rule with exp *)
+    | Log f -> derivative f var /: f                     (* Chain rule with log *)
+    | Sin f -> Cos f *: derivative f var                 (* Chain rule with sin *)
+    | Cos f -> Float (-1.) *: Sin f *: derivative f var  (* Chain rule with cos *)
+    | Pow (f, n) ->                                      (* General power rule *)
+        let n' = n -: Float 1. in 
+        let power = f ^: n' in
+        n *: power *: derivative f var
+    | Div (f, g) ->
+        let num = (derivative f var *: g) -: (f *: derivative g var) in
+        let den = g *: g in
+        num /: den
+    | Mult (f, g) -> (derivative f var *: g) +: (f *: derivative g var)
+  in 
+  simplify f'
 
 
 (* Compute gradient as partial derivatives with respect to all variables *)
@@ -161,14 +181,16 @@ let gradient expr =
   in
 
   let vars = get_vars expr in
-  List.map (fun var -> (var, derivative expr var)) vars
+  List.map (fun var -> (var, simplify (derivative expr var))) vars
 
 
 (* Computes nth derivative of an expression with respect to a variable *)
 let rec nth_derivative expr var n =
   if n < 0 then invalid_arg "nth_derivative: negative order"
   else if n = 0 then expr
-  else nth_derivative (derivative expr var) var (n - 1)
+  else 
+    let expr = simplify (derivative expr var) in 
+    nth_derivative expr var (n - 1)
 
 
 (* Evaluates a gradient given an environment mapping variables to values *)
@@ -205,6 +227,7 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
 
 
 (* TESTS *)
+(* TODO: add more tests, especially to gradient descent and simplify! *)
 let test_env () =
   print_endline "Testing environment creation and updates...";
   let env = create_env [("x", 2.0); ("y", 3.0)] in
@@ -341,7 +364,7 @@ let test_gradient_descent () =
   print_endline "✓ Gradient descent tests passed successfully!\n"
 
 (* Run all tests *)
-let () =
+let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
   test_simplify ();

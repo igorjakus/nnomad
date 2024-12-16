@@ -15,22 +15,6 @@ type expr =
   | Cos   of expr             (* Cosine function *)
 
 
-(* Convert expression to string for debugging and visualization *)
-let rec to_string = function
-  (* TODO: 1: zminimalizuj liczbe nawiasow, zeby zachowac jednoznacznosc reprezentacji *)
-  | Float x -> string_of_float x
-  | Var s -> s
-  | Add (a, b)  -> "(" ^ to_string a ^ " + " ^ to_string b ^ ")"
-  | Sub (a, b)  -> "(" ^ to_string a ^ " - " ^ to_string b ^ ")"
-  | Mult (a, b) -> "(" ^ to_string a ^ " * " ^ to_string b ^ ")"
-  | Div (a, b)  -> "(" ^ to_string a ^ " / " ^ to_string b ^ ")"
-  | Pow (a, n)  -> "(" ^ to_string a ^ "^"   ^ to_string n ^ ")"
-  | Exp a -> "exp(" ^ to_string a ^ ")"
-  | Log a -> "log(" ^ to_string a ^ ")"
-  | Sin a -> "sin(" ^ to_string a ^ ")"
-  | Cos a -> "cos(" ^ to_string a ^ ")"
-
-
 (* Operator overloading for more natural expression syntax *)
 let ( +: ) a b = Add (a, b)
 let ( -: ) a b = Sub (a, b)
@@ -224,6 +208,41 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
   in
   loop env 0
 
+
+(* Convert expression to a string for debugging and visualization *)
+let rec to_string expr =
+  (* Precedence levels for operations to decide when parentheses are necessary. *)
+  let precedence = function
+    | Add _ | Sub _ -> 1                 (* Lowest precedence *)
+    | Mult _ | Div _ -> 2                (* Medium precedence *)
+    | Pow _ -> 3                         (* Higher precedence *)
+    | Exp _ | Log _ | Sin _ | Cos _ -> 4 (* Functions *)
+    | Float _ | Var _ -> 5               (* Constants and variables have the highest precedence *)
+  in
+
+  (* Conditionally wrap an expression in parentheses if its precedence is lower. *)
+  let parenthesize parent_prec child_expr =
+    let child_prec = precedence child_expr in
+    let child_str = to_string child_expr in
+    if child_prec < parent_prec then
+      "(" ^ child_str ^ ")"
+    else
+      child_str
+  in
+
+  (* Pattern match to construct the string representation of the expression. *)
+  match expr with
+  | Float x -> string_of_float x         
+  | Var s   -> s                           
+  | Exp a   -> "exp(" ^ to_string a ^ ")"
+  | Log a   -> "log(" ^ to_string a ^ ")"
+  | Sin a   -> "sin(" ^ to_string a ^ ")"
+  | Cos a   -> "cos(" ^ to_string a ^ ")"
+  | Add (a, b)  -> parenthesize 1 a ^ " + " ^ parenthesize 1 b
+  | Sub (a, b)  -> parenthesize 1 a ^ " - " ^ parenthesize 2 b
+  | Mult (a, b) -> parenthesize 2 a ^ " * " ^ parenthesize 2 b
+  | Div (a, b)  -> parenthesize 2 a ^ " / " ^ parenthesize 3 b
+  | Pow (a, b)  -> parenthesize 3 a ^ "^"   ^ parenthesize 4 b
 
 
 (* TESTS *)

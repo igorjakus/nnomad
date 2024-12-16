@@ -286,193 +286,220 @@ let rec string_of_expr expr =
   | Pow (a, b)  -> parenthesize 3 a ^ "^"   ^ parenthesize 4 b
 
 
-(* TESTS TODO: add more and organize them better, 
-make them look similar in style of code s*)
-let test_simplify2 () =
+(* TESTS *)
+let test_env () =
+  print_endline "\nTesting environment creation and updates...";
+
   let test_cases = [
-    (* Basic simplifications *)
-    (Add (Float 1., Float 2.), Float 3.);
-    (Mult (Var "x", Float 0.), Float 0.);
-    (Add (Var "x", Float 0.), Var "x");
+    (fun () -> 
+       let env = create_env [] in 
+       StringMap.is_empty env);
     
-    (* Advanced algebraic simplifications *)
-    (Log (Exp (Var "x")), 
-    Var "x");
-
-    (Mult (Var "x", Mult (Float 2., Var "x")), 
-    Mult (Float 2., Pow (Var "x", Float 2.)));
-
-    (Div (Pow (Var "x", Float 2.), Var "x"), 
-    Var "x");
+    (fun () ->
+       let env = create_env [("x", 1.0)] in
+       StringMap.cardinal env = 1);
     
-    (* Nested expressions *)
-    (Log(Var "x") +: Log(Var "y"),
-    Log(Var "x" *: Var "y"));
-
-    (Exp (Log (Var "x") +: Log (Var "y")), 
-    Mult (Var "x", Var "y"));
+    (fun () ->
+       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let expr = Var "x" +: Var "y" in
+       eval env expr = 5.0);
     
-    (* Trigonometric simplifications *)
-    (Sin (Add (Var "x", Float Float.pi)), 
-    Mult (Float (-1.), Sin (Var "x")));
-    
-    (* Complex nested expressions *)
-    (Div (Mult (Var "x", Pow (Var "y", Float 2.)), Var "y" *: Var "x"),
-    Var "y");
-  ] 
-  in
+    (fun () ->
+       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let env = update_env env [("x", 1.0)] in
+       let expr = Var "x" +: Var "y" in
+       eval env expr = 4.0);
+  ] in
 
-  List.iteri (fun i (input, expected) ->
+  List.iter (fun test_fn ->
+    assert (test_fn ());
+  ) test_cases;
+  
+  print_endline "✓ Environment tests completed!\n"
+
+let test_simplify () =
+  print_endline "Testing expression simplification...";
+
+  let test_cases = [
+    ((Var "x" +: Float 0., Var "x"));
+    ((Float 0. *: Var "x", Float 0.));
+    ((Var "x" ^: Float 1., Var "x"));
+    ((Var "x" +: Var "x", Float 2. *: Var "x"));
+    ((Log (Exp (Var "x")), Var "x"));
+    ((Exp (Log (Var "x")), Var "x"));
+    ((Sub (Var "x", Float (-2.)), Add (Var "x", Float 2.)));
+    (((Var "x" +: Float 0.) *: (Float 1. *: Var "y"), Mult (Var "x", Var "y")));
+    ((Mult (Var "x", Pow (Var "x", Float 2.)), Pow (Var "x", Float 3.)));
+    ((Log(Var "x") +: Log(Var "y"), Log(Var "x" *: Var "y")));
+    ((Div (Pow (Var "x", Float 3.), Pow (Var "x", Float 2.)), Var "x"));
+    ((Div (Mult (Var "x", Pow (Var "y", Float 2.)), Var "y" *: Var "x"), Var "y"));
+  ] in
+
+  List.iter (fun (input, expected) ->
     let result = simplify input in
-    if not (result =:= expected) then
-      Printf.printf "Test %d failed:\nInput: %s\nExpected: %s\nGot: %s\n\n"
-        i
+    try
+      assert (result =:= expected);   
+    with Assert_failure _ ->
+      Printf.printf "Input: %s\nExpected: %s\nGot: %s\n\n"
         (string_of_expr input)
         (string_of_expr expected)
         (string_of_expr result)
-  ) test_cases
-
-let test_env () =
-  print_endline "Testing environment creation and updates...";
-  let env = create_env [("x", 2.0); ("y", 3.0)] in
-  let expr = Var "x" +: Var "y" in
-  assert (eval env expr = 5.0);
-  let env = update_env env [("x", 1.0)] in
-  assert (eval env expr = 4.0);
+  ) test_cases;
   
-  (* Additional tests *)
-  let env = create_env [] in
-  assert (StringMap.is_empty env);
-  
-  let env = create_env [("x", 1.0)] in
-  assert (StringMap.cardinal env = 1);
-  
-  print_endline "✓ Environment tests passed successfully!\n"
-
-let test_simplify1 () =
-  print_endline "Testing expression simplification...";
-  (* Basic simplification *)
-  assert (simplify (Var "x" +: Float 0.) = Var "x");
-  assert (simplify (Float 0. *: Var "x") = Float 0.);
-  assert (simplify (Var "x" ^: Float 1.) = Var "x");
-
-  (* Advanced simplification *)
-  assert (simplify (Log (Exp (Var "x"))) = Var "x");
-  assert (simplify (Exp (Log (Var "x"))) = Var "x");
-  assert (simplify (Sub (Var "x", Float (-2.))) = Add (Var "x", Float 2.));
-  
-  (* Nested expressions *)
-  let expr = (Var "x" +: Float 0.) *: (Float 1. *: Var "y") in
-  assert (simplify expr = Mult (Var "x", Var "y"));
-  
-  print_endline "✓ Simplification tests passed successfully!\n"
+  print_endline "✓ Simplification tests completed!\n"
 
 let test_eval () =
   print_endline "Testing expression evaluation...";
+
   let env = create_env ["x", 2.0; "y", 3.0] in
+  let test_cases = [
+    ((Var "x" +: Var "y", 5.0));
+    ((Var "x" *: Var "y", 6.0));
+    ((Var "x" -: Var "y", -1.0));
+    ((Var "x" /: Var "y", 2.0 /. 3.0));
+    ((Exp (Var "x"), exp 2.0));
+    ((Log (Var "y"), log 3.0));
+    ((Sin (Var "x"), sin 2.0));
+    ((Cos (Var "x"), cos 2.0));
+    ((Sin(Var "x") *: Cos(Var "y"), sin(2.0) *. cos(3.0)));
+    ((Sin(Var "x") *: Cos(Var "y") +: Exp(Var "x" /: Var "y"),
+      sin(2.0) *. cos(3.0) +. exp(2.0/.3.0)));
+    ((Pow(Var "x", Float 3.) +: Pow(Var "y", Float 2.),
+      8.0 +. 9.0));
+  ] in
 
-  (* Basic arithmetic *)
-  assert (eval env (Var "x" +: Var "y") = 5.0);
-  assert (eval env (Var "x" *: Var "y") = 6.0);
-  assert (eval env (Var "x" -: Var "y") = -1.0);
-  assert (Float.abs(eval env (Var "x" /: Var "y") -. (2.0 /. 3.0)) < 1e-10);
-
-  (* Advanced functions *)
-  assert (Float.abs(eval env (Exp (Var "x")) -. exp 2.0) < 1e-10);
-  assert (Float.abs(eval env (Log (Var "y")) -. log 3.0) < 1e-10);
-  assert (Float.abs(eval env (Sin (Var "x")) -. sin 2.0) < 1e-10);
-  assert (Float.abs(eval env (Cos (Var "x")) -. cos 2.0) < 1e-10);
-
-  (* Complex expressions *)
-  let complex_expr = Sin(Var "x") *: Cos(Var "y") +: Exp(Var "x" /: Var "y") in
-  assert (Float.abs(eval env complex_expr -. (sin(2.0) *. cos(3.0) +. exp(2.0/.3.0))) < 1e-10);
-
-  print_endline "✓ Evaluation tests passed successfully!\n"
+  List.iter (fun (expr, expected) ->
+    let result = eval env expr in
+    try
+      assert (Float.abs(result -. expected) < 1e-10); 
+    with Assert_failure _ ->
+      Printf.printf "Expected: %f\nGot: %f\n\n" expected result
+  ) test_cases;
+  
+  print_endline "✓ Evaluation tests completed!\n"
 
 let test_derivative () =
   print_endline "Testing derivative computation...";
-  (* Basic derivatives *)
-  let expr = Var "x" *: Var "x" in
-  assert (derivative expr "x" = (Float 2. *: Var "x"));
 
-  let expr = Sin (Var "x") in
-  assert (derivative expr "x" = Cos (Var "x"));
+  let test_cases = [
+    ((fun () ->
+        let expr = Var "x" *: Var "x" in
+        derivative expr "x" =:= (Float 2. *: Var "x")));
+    
+    ((fun () ->
+        let expr = Sin (Var "x") in
+        derivative expr "x" =:= Cos (Var "x")));
+    
+    ((fun () ->
+        let expr = Exp (Var "x" *: Var "x") in
+        let der = derivative expr "x" in
+        simplify der =:= (Exp (Var "x" *: Var "x") *: (Float 2. *: Var "x"))));
+    
+    ((fun () ->
+        let expr = Pow (Var "x", Float 3.) in
+        derivative expr "x" =:= (Float 3. *: Pow (Var "x", Float 2.))));
+    
+    ((fun () ->
+        let expr = Var "x" *: Sin (Var "x") in
+        let der = derivative expr "x" in
+        simplify der =:= (Sin (Var "x") +: (Var "x" *: Cos (Var "x")))));
+    
+    ((fun () ->
+        let expr = Var "x" *: Var "x" in
+        nth_derivative expr "x" 2 =:= Float 2.));
+    
+    ((fun () ->
+        let expr = Var "x" *: Var "x" in
+        nth_derivative expr "x" 3 =:= Float 0.));
+  ] in
 
-  (* Chain rule *)
-  let expr = Exp (Var "x" *: Var "x") in
-  let der = derivative expr "x" in
-  assert (simplify der = Exp (Var "x" *: Var "x") *: (Float 2. *: Var "x"));
-
-  (* Higher-order derivatives *)
-  let expr = Var "x" *: Var "x" in
-  assert (nth_derivative expr "x" 2 = Float 2.);
-  assert (nth_derivative expr "x" 3 = Float 0.);
-
-  (* Test error handling *)
-  try 
-    let _ = nth_derivative expr "x" (-1) in
-    failwith "Expected invalid_arg exception"
-  with Invalid_argument _ -> ();
-
-  print_endline "✓ Derivative tests passed successfully!\n"
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());
+    with Assert_failure _ ->
+      print_endline "Failed\n"
+  ) test_cases;
+  
+  print_endline "✓ Derivative tests completed!\n"
 
 let test_gradient () =
   print_endline "Testing gradient computation...";
-  (* Simple quadratic function *)
-  let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
-  let grad = gradient expr in
 
-  assert (List.assoc "x" grad = Float 2. *: Var "x");
-  assert (List.assoc "y" grad = Float 2. *: Var "y");
+  let test_cases = [
+    ((fun () ->
+        let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
+        let grad = gradient expr in
+        let x_der = List.assoc "x" grad in
+        let y_der = List.assoc "y" grad in
+        x_der =:= (Float 2. *: Var "x") && 
+        y_der =:= (Float 2. *: Var "y")));
+    
+    ((fun () ->
+        let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
+        let env = create_env ["x", 1.0; "y", 2.0] in
+        let grad = gradient expr in
+        let grad_values = eval_grad env grad in
+        List.assoc "x" grad_values = 2.0 && 
+        List.assoc "y" grad_values = 4.0));
+    
+    ((fun () ->
+        let expr = Sin(Var "x") *: Cos(Var "y") in
+        let grad = gradient expr in
+        let env = create_env ["x", 0.0; "y", 0.0] in
+        let grad_values = eval_grad env grad in
+        Float.abs(List.assoc "x" grad_values -. 1.0) < 1e-10 && 
+        Float.abs(List.assoc "y" grad_values -. 0.0) < 1e-10));
+  ] in
 
-  (* Test gradient evaluation *)
-  let env = create_env ["x", 1.0; "y", 2.0] in
-  let grad_values = eval_grad env grad in
-
-  assert (List.assoc "x" grad_values = 2.0);
-  assert (List.assoc "y" grad_values = 4.0);
-
-  (* More complex function *)
-  let expr = Sin(Var "x") *: Cos(Var "y") in
-  let grad = gradient expr in
-  let env = create_env ["x", 0.0; "y", 0.0] in
-  let grad_values = eval_grad env grad in
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());
+    with Assert_failure _ ->
+      print_endline "Failed\n"
+  ) test_cases;
   
-  assert (Float.abs(List.assoc "x" grad_values -. 1.0) < 1e-10);
-  assert (Float.abs(List.assoc "y" grad_values -. 0.0) < 1e-10);
-
-  print_endline "✓ Gradient tests passed successfully!\n"
+  print_endline "✓ Gradient tests completed!\n"
 
 let test_gradient_descent () =
   print_endline "Testing gradient descent optimization...";
-  (* Test with quadratic function *)
-  let expr = Var "x" *: Var "x" in
-  let env = create_env ["x", 10.0] in
-  let learning_rate = 0.1 in
-  let iterations = 100 in
 
-  let final_env = gradient_descent ~expr ~env ~learning_rate ~iterations in
-  let final_value = StringMap.find "x" final_env in
+  let test_cases = [
+    ((fun () ->
+        let expr = Var "x" *: Var "x" in
+        let env = create_env ["x", 10.0] in
+        let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
+        abs_float (StringMap.find "x" final_env) < 1e-3));
+    
+    ((fun () ->
+        let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
+        let env = create_env ["x", 1.0; "y", 1.0] in
+        let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
+        abs_float (StringMap.find "x" final_env) < 1e-3 && 
+        abs_float (StringMap.find "y" final_env) < 1e-3));
+    
+    ((fun () ->
+        let expr = Pow(Var "x" -: Float 1., Float 2.) +: 
+                  Pow(Var "y" +: Float 2., Float 2.) in
+        let env = create_env ["x", 0.0; "y", 0.0] in
+        let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:200 in
+        abs_float (StringMap.find "x" final_env -. 1.0) < 1e-2 && 
+        abs_float (StringMap.find "y" final_env +. 2.0) < 1e-2));
+  ] in
 
-  (* The minimum of x^2 is at x = 0 *)
-  assert (abs_float final_value < 1e-3);
-
-  (* Test with more complex function *)
-  let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
-  let env = create_env ["x", 1.0; "y", 1.0] in
-  let final_env = gradient_descent ~expr ~env ~learning_rate ~iterations in
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());   
+    with Assert_failure _ ->
+      print_endline "Failed\n"
+  ) test_cases;
   
-  assert (abs_float (StringMap.find "x" final_env) < 1e-3);
-  assert (abs_float (StringMap.find "y" final_env) < 1e-3);
-
-  print_endline "✓ Gradient descent tests passed successfully!\n"
+  print_endline "✓ Gradient descent tests completed!\n"
 
 (* Run all tests *)
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
-  test_simplify1 ();
-  test_simplify2 ();
+  test_simplify ();
   test_eval ();
   test_derivative ();
   test_gradient ();

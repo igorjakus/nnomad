@@ -22,19 +22,37 @@ let ( *: ) a b = Mult (a, b)
 let ( /: ) a b = Div (a, b)
 let ( ^: ) x n = Pow (x, n)
 
+let rec (=:=) e1 e2 =
+  match e1, e2 with
+  | Float a, Float b -> abs_float (a -. b) < 1e-10
+  | Var a,   Var b   -> a = b
+  
+  | Add (a1, b1),  Add (a2, b2) 
+  | Sub (a1, b1),  Sub (a2, b2)
+  | Mult (a1, b1), Mult (a2, b2)
+  | Div (a1, b1),  Div (a2, b2)
+  | Pow (a1, b1),  Pow (a2, b2) -> a1 =:= a2 && b1 =:= b2
 
-(* Simplifies expressions by applying basic algebraic rules *)
-let rec simplify = function
-  (* TODO: 2: make some order and enough comments but not too much, 
-  also ensure that it is always simplified maximally, 
-  like Log (expr) -> Log (simplify expr) but it can be sometimes simplified further,
-  by simplify Log (simplify expr), but we also want to ensure recursion ends *)
+  | Exp a1, Exp a2 
+  | Log a1, Log a2
+  | Sin a1, Sin a2 
+  | Cos a1, Cos a2 -> a1 =:= a2
   
+  | _ -> false
+
+
+(* Helper function to apply simplify recursively only once *)
+let rec simplify_once expr = 
+  match expr with
   (* Error handling *)
-  | Div (_, Float 0.) -> failwith "division by zero"
+  | Div (_, Float 0.)          -> failwith "division by zero"
   | Log (Float x) when x <= 0. -> failwith "log of non-positive number"
-  
-  (* Calculating values*)
+
+  (* Base cases *)
+  | Float x -> Float x
+  | Var x -> Var x
+
+  (* Calculating constant values *)
   | Mult (Float 0., _) -> Float 0.
   | Mult (_, Float 0.) -> Float 0.
   | Div  (Float 0., _) -> Float 0.
@@ -49,47 +67,73 @@ let rec simplify = function
   | Sin (Float x) -> Float (sin x)
   | Cos (Float x) -> Float (cos x)
 
-  (* Trivial simplification *)
-  | Add  (Float 0., x) -> simplify x 
-  | Add  (x, Float 0.) -> simplify x
-  | Sub  (x, Float 0.) -> simplify x
-  | Mult (Float 1., x) -> simplify x
-  | Mult (x, Float 1.) -> simplify x
-  | Div  (x, Float 1.) -> simplify x
-  | Pow  (x, Float 1.) -> simplify x
+  (* Now we are sure that matched arguments of expressions aren't only constants.
+  It's important for many simplifications so we won't get into infinite recursion! *)
+
+  (* Identity operations *)
+  | Add  (Float 0., x) -> simplify_once x 
+  | Add  (x, Float 0.) -> simplify_once x
+  | Sub  (x, Float 0.) -> simplify_once x
+  | Mult (Float 1., x) -> simplify_once x
+  | Mult (x, Float 1.) -> simplify_once x
+  | Div  (x, Float 1.) -> simplify_once x
+  | Pow  (x, Float 1.) -> simplify_once x
+  | Log (Exp x)        -> simplify_once x
+  | Exp (Log x)        -> simplify_once x
 
   (* Sort expressions *)
-  | Mult (x, Float y) -> Mult (Float y, simplify x)  (* prefer constant before other expr in multiplicaton *)
+  | Mult (y, Float x) -> simplify_once (Mult (Float x, y))
+  | Add  (Float x, y) -> simplify_once (Add(y, Float x))
+  (* Since we matched all-float expressions already, we are sure y is not Float.
+  Therefore this part of code is infinite-recursion safe *)
+
+  (* Other algebraic simplifications *)
+  | Sub (x, y)          when x =:= y -> Float 0.
+  | Sub (x, Float y)    when y < 0.  -> simplify_once (x +: Float (-.y))
+  | Add (x, y)          when x =:= y -> simplify_once (Float 2. *: x)
+
+  | Mult(Pow (x, n), y) when x =:= y -> simplify_once (x ^: (n +: Float 1.))
+  | Mult(y, Pow(x, n))  when x =:= y -> simplify_once (x ^: (n +: Float 1.))
+  | Div(Pow (x, n), y)  when x =:= y -> simplify_once (x ^: (n -: Float 1.))
+  | Div(y, Pow (x, n))  when x =:= y -> simplify_once (x ^: (Float 1. -: n))
   
-  (* Unique function properties *)
-  | Log (Exp x) -> simplify x
-  | Exp (Log x) -> simplify x
-  | Sub (x, Float y) when y < 0. -> Add (x, Float (-.y))
-  | Add (x, y) when simplify x = simplify y -> Mult(Float 2., simplify x)
-  | Sub (x, y) when simplify x = simplify y -> Float 0.
-  | Mult(Pow (x, n), y) when x = y -> simplify (Pow(x, (n +: Float 1.)))
-  | Mult(y, Pow(x, n)) when x = y -> simplify (Pow(x, (n +: Float 1.)))
+  | Add(Log(x), Log(y)) -> simplify_once (Log(x *: y))
+  | Sub(Log(x), Log(y)) -> simplify_once (Log(x /: y))
 
-  (* Recursively simplify subexpressions *)
-  | Add  (a, b) -> Add (simplify a, simplify b)
-  | Sub  (a, b) -> Sub (simplify a, simplify b)
-  | Mult (a, b) -> Mult (simplify a, simplify b)
-  | Div  (a, b) -> Div (simplify a, simplify b)
-  | Pow  (a, b) -> Pow (simplify a, simplify b)
-  | Exp  a -> Exp (simplify a)
-  | Log  a -> Log (simplify a)
-  | Sin  a -> Sin (simplify a)
-  | Cos  a -> Cos (simplify a)
+  (* Recursively simplify complex expressions *)
+  | Add (a, b) ->
+    let a' = simplify_once a in
+    let b' = simplify_once b in
+    (Add (a', b'))
+  | Sub (a, b) ->
+    let a' = simplify_once a in
+    let b' = simplify_once b in
+    (Sub (a', b'))
+  | Mult (a, b) ->
+    let a' = simplify_once a in
+    let b' = simplify_once b in
+    (Mult (a', b'))
+  | Div (a, b) ->
+    let a' = simplify_once a in
+    let b' = simplify_once b in
+    (Div (a', b'))
+  | Pow (a, b) ->
+    let a' = simplify_once a in
+    let b' = simplify_once b in
+    (Pow (a', b'))
 
-  (* Base cases *)
-  (* TODO: 2 maybe more base cases would be helpful for doing TODO: 2 *)
-  | Float x -> Float x
-  | Var x -> Var x
+  (* Recursively simplify unary functions *)
+  | Exp a -> (Exp (simplify_once a))
+  | Log a -> (Log (simplify_once a))
+  | Sin a -> (Sin (simplify_once a))
+  | Cos a -> (Cos (simplify_once a))
 
 
-(* TODO: 3 simplify pojawia sie mnostwo razy w funkcjach ponizej, czy da sie jakos tak zrobic,
-zeby nie powielac kodu? przy kazdej operacji chcmemy uzyc simplify wiec moze jakos to opakujemy w monade? 
-nie wime czy ma to sens *)
+(* Simplifies expression by applying algebraic rules *)
+let simplify expr =
+  let simplified = simplify_once expr in
+  if expr =:= simplified then expr
+  else simplify_once simplified
 
 
 (* Environment type for variable bindings *)
@@ -126,31 +170,28 @@ let rec eval (env: env) (expr: expr): float =
 
 
 (* Computes the derivative of an expression with respect to a variable *)
-(* TODO: 4: uzywanie simplify wyglada troche brzydko, moze da sie cos z tym zrobic? *)
 let rec derivative expr var = 
-  let f' =
-    match simplify expr with
-    | Float _ -> Float 0.
-    | Var x when x = var -> Float 1.
-    | Var _ -> Float 0.
-    | Add (f, g) -> derivative f var +: derivative g var
-    | Sub (f, g) -> derivative f var -: derivative g var
-    | Pow (Var x, Float n) -> Float n *: (Var x ^: Float (n -. 1.)) (* Simplified power rule *)
-    | Exp f -> Exp f *: derivative f var                 (* Chain rule with exp *)
-    | Log f -> derivative f var /: f                     (* Chain rule with log *)
-    | Sin f -> Cos f *: derivative f var                 (* Chain rule with sin *)
-    | Cos f -> Float (-1.) *: Sin f *: derivative f var  (* Chain rule with cos *)
-    | Pow (f, n) ->                                      (* General power rule *)
-        let n' = n -: Float 1. in 
-        let power = f ^: n' in
-        n *: power *: derivative f var
-    | Div (f, g) ->
-        let num = (derivative f var *: g) -: (f *: derivative g var) in
-        let den = g *: g in
-        num /: den
-    | Mult (f, g) -> (derivative f var *: g) +: (f *: derivative g var)
-  in 
-  simplify f'
+  begin match simplify expr with
+  | Float _ -> Float 0.
+  | Var x when x = var -> Float 1.
+  | Var _ -> Float 0.
+  | Add (f, g) -> derivative f var +: derivative g var
+  | Sub (f, g) -> derivative f var -: derivative g var
+  | Pow (Var x, Float n) -> Float n *: (Var x ^: Float (n -. 1.)) (* Simplified power rule *)
+  | Exp f -> Exp f *: derivative f var                 (* Chain rule with exp *)
+  | Log f -> derivative f var /: f                     (* Chain rule with log *)
+  | Sin f -> Cos f *: derivative f var                 (* Chain rule with sin *)
+  | Cos f -> Float (-1.) *: Sin f *: derivative f var  (* Chain rule with cos *)
+  | Pow (f, n) ->                                      (* General power rule *)
+      let n' = n -: Float 1. in 
+      let power = f ^: n' in
+      n *: power *: derivative f var
+  | Div (f, g) ->
+      let num = (derivative f var *: g) -: (f *: derivative g var) in
+      let den = g *: g in
+      num /: den
+  | Mult (f, g) -> (derivative f var *: g) +: (f *: derivative g var)
+  end |> simplify
 
 
 (* Compute gradient as partial derivatives with respect to all variables *)
@@ -210,7 +251,7 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
 
 
 (* Convert expression to a string for debugging and visualization *)
-let rec to_string expr =
+let rec string_of_expr expr =
   (* Precedence levels for operations to decide when parentheses are necessary. *)
   let precedence = function
     | Add _ | Sub _ -> 1                 (* Lowest precedence *)
@@ -223,7 +264,7 @@ let rec to_string expr =
   (* Conditionally wrap an expression in parentheses if its precedence is lower. *)
   let parenthesize parent_prec child_expr =
     let child_prec = precedence child_expr in
-    let child_str = to_string child_expr in
+    let child_str = string_of_expr child_expr in
     if child_prec < parent_prec then
       "(" ^ child_str ^ ")"
     else
@@ -234,10 +275,10 @@ let rec to_string expr =
   match expr with
   | Float x -> string_of_float x         
   | Var s   -> s                           
-  | Exp a   -> "exp(" ^ to_string a ^ ")"
-  | Log a   -> "log(" ^ to_string a ^ ")"
-  | Sin a   -> "sin(" ^ to_string a ^ ")"
-  | Cos a   -> "cos(" ^ to_string a ^ ")"
+  | Exp a   -> "exp(" ^ string_of_expr a ^ ")"
+  | Log a   -> "log(" ^ string_of_expr a ^ ")"
+  | Sin a   -> "sin(" ^ string_of_expr a ^ ")"
+  | Cos a   -> "cos(" ^ string_of_expr a ^ ")"
   | Add (a, b)  -> parenthesize 1 a ^ " + " ^ parenthesize 1 b
   | Sub (a, b)  -> parenthesize 1 a ^ " - " ^ parenthesize 2 b
   | Mult (a, b) -> parenthesize 2 a ^ " * " ^ parenthesize 2 b
@@ -245,8 +286,52 @@ let rec to_string expr =
   | Pow (a, b)  -> parenthesize 3 a ^ "^"   ^ parenthesize 4 b
 
 
-(* TESTS *)
-(* TODO: add more tests, especially to gradient descent and simplify! *)
+(* TESTS TODO: add more and organize them better, 
+make them look similar in style of code s*)
+let test_simplify2 () =
+  let test_cases = [
+    (* Basic simplifications *)
+    (Add (Float 1., Float 2.), Float 3.);
+    (Mult (Var "x", Float 0.), Float 0.);
+    (Add (Var "x", Float 0.), Var "x");
+    
+    (* Advanced algebraic simplifications *)
+    (Log (Exp (Var "x")), 
+    Var "x");
+
+    (Mult (Var "x", Mult (Float 2., Var "x")), 
+    Mult (Float 2., Pow (Var "x", Float 2.)));
+
+    (Div (Pow (Var "x", Float 2.), Var "x"), 
+    Var "x");
+    
+    (* Nested expressions *)
+    (Log(Var "x") +: Log(Var "y"),
+    Log(Var "x" *: Var "y"));
+
+    (Exp (Log (Var "x") +: Log (Var "y")), 
+    Mult (Var "x", Var "y"));
+    
+    (* Trigonometric simplifications *)
+    (Sin (Add (Var "x", Float Float.pi)), 
+    Mult (Float (-1.), Sin (Var "x")));
+    
+    (* Complex nested expressions *)
+    (Div (Mult (Var "x", Pow (Var "y", Float 2.)), Var "y" *: Var "x"),
+    Var "y");
+  ] 
+  in
+
+  List.iteri (fun i (input, expected) ->
+    let result = simplify input in
+    if not (result =:= expected) then
+      Printf.printf "Test %d failed:\nInput: %s\nExpected: %s\nGot: %s\n\n"
+        i
+        (string_of_expr input)
+        (string_of_expr expected)
+        (string_of_expr result)
+  ) test_cases
+
 let test_env () =
   print_endline "Testing environment creation and updates...";
   let env = create_env [("x", 2.0); ("y", 3.0)] in
@@ -264,7 +349,7 @@ let test_env () =
   
   print_endline "✓ Environment tests passed successfully!\n"
 
-let test_simplify () =
+let test_simplify1 () =
   print_endline "Testing expression simplification...";
   (* Basic simplification *)
   assert (simplify (Var "x" +: Float 0.) = Var "x");
@@ -386,7 +471,8 @@ let test_gradient_descent () =
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
-  test_simplify ();
+  test_simplify1 ();
+  test_simplify2 ();
   test_eval ();
   test_derivative ();
   test_gradient ();

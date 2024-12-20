@@ -1,4 +1,8 @@
-open Grad
+open Nnomad.Expr
+open Nnomad.Eval
+open Nnomad.Derivatives
+open Nnomad.Optimization
+
 
 let test_env () =
   print_endline "\nTesting environment creation and updates...";

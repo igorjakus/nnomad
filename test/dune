@@ -1,4 +1,4 @@
 (test
  (name test)
  (modules test)
- (libraries grad))
+ (libraries nnomad))

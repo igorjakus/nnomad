@@ -1,3 +1,5 @@
 (library
- (name grad)
- (modules grad)) 
+ (name nnomad)
+ (modules expr eval derivatives matrix optimization)
+ (libraries owl)
+) 

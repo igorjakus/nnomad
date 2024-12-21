@@ -1,5 +1,6 @@
 open Expr
 
+
 (* Computes the derivative of an expression with respect to a variable *)
 let rec derivative expr var = 
   begin match simplify expr with
@@ -8,7 +9,8 @@ let rec derivative expr var =
   | Var _ -> Float 0.
   | Add (f, g) -> derivative f var +: derivative g var
   | Sub (f, g) -> derivative f var -: derivative g var
-  | Pow (Var x, Float n) -> Float n *: (Var x ^: Float (n -. 1.)) (* Simplified power rule *)
+  | Pow (Var x, Float n) -> 
+    Float n *: (Var x ^: Float (n -. 1.))              (* Simplified power rule *)
   | Exp f -> Exp f *: derivative f var                 (* Chain rule with exp *)
   | Log f -> derivative f var /: f                     (* Chain rule with log *)
   | Sin f -> Cos f *: derivative f var                 (* Chain rule with sin *)

@@ -5,6 +5,10 @@ module StringMap = Map.Make(String)
 type env = float StringMap.t
 
 
+(* Gets the value of a variable from the environment. *)
+let get_variable = StringMap.find
+
+
 (* Create env from list of string * float pairs *)
 let create_env (bindings: (string * float) list) =
   List.fold_left (fun acc (var, value) -> StringMap.add var value acc) StringMap.empty bindings
@@ -36,4 +40,3 @@ let rec eval (env: env) (expr: expr): float =
 (* Evaluates a gradient given an environment mapping variables to values *)
 let eval_grad (env: env) (gradient: gradient) =
   List.map (fun (var, expr) -> (var, eval env expr)) gradient  
-

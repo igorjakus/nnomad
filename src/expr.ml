@@ -42,6 +42,7 @@ let rec (=:=) e1 e2 =
   
   | _ -> false
 
+
 (* Convert expression to a string for debugging and visualization *)
 let rec string_of_expr expr =
   (* Precedence levels for operations to decide when parentheses are necessary. *)

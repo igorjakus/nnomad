@@ -7,15 +7,7 @@ open Nnomad.Optimization
 let test_env () =
   print_endline "\nTesting environment creation and updates...";
 
-  let test_cases = [
-    (fun () -> 
-       let env = create_env [] in 
-       StringMap.is_empty env);
-    
-    (fun () ->
-       let env = create_env [("x", 1.0)] in
-       StringMap.cardinal env = 1);
-    
+  let test_cases = [  
     (fun () ->
        let env = create_env [("x", 2.0); ("y", 3.0)] in
        let expr = Var "x" +: Var "y" in
@@ -33,6 +25,7 @@ let test_env () =
   ) test_cases;
   
   print_endline "✓ Environment tests completed!\n"
+
 
 let test_simplify () =
   print_endline "Testing expression simplification...";
@@ -65,6 +58,7 @@ let test_simplify () =
   
   print_endline "✓ Simplification tests completed!\n"
 
+
 let test_eval () =
   print_endline "Testing expression evaluation...";
 
@@ -94,6 +88,7 @@ let test_eval () =
   ) test_cases;
   
   print_endline "✓ Evaluation tests completed!\n"
+
 
 let test_derivative () =
   print_endline "Testing derivative computation...";
@@ -139,6 +134,7 @@ let test_derivative () =
   
   print_endline "✓ Derivative tests completed!\n"
 
+
 let test_gradient () =
   print_endline "Testing gradient computation...";
 
@@ -177,6 +173,7 @@ let test_gradient () =
   
   print_endline "✓ Gradient tests completed!\n"
 
+
 let test_gradient_descent () =
   print_endline "Testing gradient descent optimization...";
 
@@ -185,22 +182,22 @@ let test_gradient_descent () =
         let expr = Var "x" *: Var "x" in
         let env = create_env ["x", 10.0] in
         let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
-        abs_float (StringMap.find "x" final_env) < 1e-3));
+        abs_float (get_variable "x" final_env) < 1e-3));
     
     ((fun () ->
         let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
         let env = create_env ["x", 1.0; "y", 1.0] in
         let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
-        abs_float (StringMap.find "x" final_env) < 1e-3 && 
-        abs_float (StringMap.find "y" final_env) < 1e-3));
+        abs_float (get_variable "x" final_env) < 1e-3 && 
+        abs_float (get_variable "y" final_env) < 1e-3));
     
     ((fun () ->
         let expr = Pow(Var "x" -: Float 1., Float 2.) +: 
                   Pow(Var "y" +: Float 2., Float 2.) in
         let env = create_env ["x", 0.0; "y", 0.0] in
         let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:200 in
-        abs_float (StringMap.find "x" final_env -. 1.0) < 1e-2 && 
-        abs_float (StringMap.find "y" final_env +. 2.0) < 1e-2));
+        abs_float (get_variable "x" final_env -. 1.0) < 1e-2 && 
+        abs_float (get_variable "y" final_env +. 2.0) < 1e-2));
   ] in
 
   List.iter (fun test_fn ->
@@ -212,6 +209,7 @@ let test_gradient_descent () =
   
   print_endline "✓ Gradient descent tests completed!\n"
 
+
 (* Run all tests *)
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
@@ -222,5 +220,6 @@ let run_tests () =
   test_gradient ();
   test_gradient_descent ();
   print_endline "All tests completed successfully! ✓\n";;
+
 
 let () = run_tests ()

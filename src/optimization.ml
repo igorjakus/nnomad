@@ -9,7 +9,7 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
   let calculate_updated_values ~expr ~env ~learning_rate =
     let updated_value (var, f') = 
       let f'_value = eval env f' in
-      let current_value = StringMap.find var env in
+      let current_value = get_variable var env in
       (var, current_value -. learning_rate *. f'_value)  (* x - lr * f'(env) *)
     in
     List.map updated_value (gradient expr) in
@@ -26,4 +26,3 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
   in
   
   loop env 0
-

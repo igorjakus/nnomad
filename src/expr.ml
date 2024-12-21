@@ -134,6 +134,8 @@ let rec simplify_once expr =
   | Mult(y, Pow(x, n))  when x =:= y -> simplify_once (x ^: (n +: Float 1.))
   | Div(Pow (x, n), y)  when x =:= y -> simplify_once (x ^: (n -: Float 1.))
   | Div(y, Pow (x, n))  when x =:= y -> simplify_once (x ^: (Float 1. -: n))
+  | Div(Pow(x, n), Pow(y, m)) when x =:= y -> simplify_once (Pow(x, n -: m))
+  | Mult(Pow(x, n), Pow(y, m)) when x =:= y -> simplify_once (Pow(x, n +: m))
   
   | Add(Log(x), Log(y)) -> simplify_once (Log(x *: y))
   | Sub(Log(x), Log(y)) -> simplify_once (Log(x /: y))

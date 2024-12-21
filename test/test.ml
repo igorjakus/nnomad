@@ -12,18 +12,40 @@ let test_env () =
        let env = create_env [("x", 2.0); ("y", 3.0)] in
        let expr = Var "x" +: Var "y" in
        eval env expr = 5.0);
-    
+
     (fun () ->
        let env = create_env [("x", 2.0); ("y", 3.0)] in
        let env = update_env env [("x", 1.0)] in
        let expr = Var "x" +: Var "y" in
        eval env expr = 4.0);
+
+    (fun () ->
+       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let gradient = [("x", Float 1.0); ("y", Float (-1.0))] in
+       eval_grad env gradient = [("x", 1.0); ("y", -1.0)]);
+
+    (fun () ->
+       let env = create_env [("x", 2.0)] in
+       let env = update_env env [("y", 3.0)] in
+       let expr = Var "x" +: Var "y" in
+       eval env expr = 5.0);
+
+    (fun () ->
+       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let env = update_env env [("x", 4.0); ("y", 1.0)] in
+       let expr = Var "x" *: Var "y" in
+       eval env expr = 4.0);
+
+    (fun () ->
+       let env = create_env [("x", 1.0); ("x", 2.0)] in
+       let expr = Var "x" in
+       eval env expr = 2.0);
   ] in
 
   List.iter (fun test_fn ->
-    assert (test_fn ());
+    assert (test_fn ())
   ) test_cases;
-  
+
   print_endline "✓ Environment tests completed!\n"
 
 

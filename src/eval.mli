@@ -1,5 +1,5 @@
 type env
-val get_variable : string -> env -> float
+val get_value : string -> env -> float
 val create_env : (string * float) list -> env
 val update_env : env -> (string * float) list -> env
 val eval : env -> Expr.expr -> float

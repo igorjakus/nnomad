@@ -6,7 +6,7 @@ type env = float StringMap.t
 
 
 (* Gets the value of a variable from the environment. *)
-let get_variable = StringMap.find
+let get_value = StringMap.find
 
 
 (* Create env from list of string * float pairs *)

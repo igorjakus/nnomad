@@ -254,22 +254,22 @@ let test_gradient_descent () =
         let expr = Var "x" *: Var "x" in
         let env = create_env ["x", 10.0] in
         let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
-        abs_float (get_variable "x" final_env) < 1e-3));
+        abs_float (get_value "x" final_env) < 1e-3));
     
     ((fun () ->
         let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
         let env = create_env ["x", 1.0; "y", 1.0] in
         let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
-        abs_float (get_variable "x" final_env) < 1e-3 && 
-        abs_float (get_variable "y" final_env) < 1e-3));
+        abs_float (get_value "x" final_env) < 1e-3 && 
+        abs_float (get_value "y" final_env) < 1e-3));
     
     ((fun () ->
         let expr = Pow(Var "x" -: Float 1., Float 2.) +: 
                   Pow(Var "y" +: Float 2., Float 2.) in
         let env = create_env ["x", 0.0; "y", 0.0] in
         let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:200 in
-        abs_float (get_variable "x" final_env -. 1.0) < 1e-2 && 
-        abs_float (get_variable "y" final_env +. 2.0) < 1e-2));
+        abs_float (get_value "x" final_env -. 1.0) < 1e-2 && 
+        abs_float (get_value "y" final_env +. 2.0) < 1e-2));
   ] in
 
   List.iter (fun test_fn ->

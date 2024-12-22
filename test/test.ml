@@ -81,6 +81,56 @@ let test_simplify () =
   print_endline "✓ Simplification tests completed!\n"
 
 
+let test_string_of_expr () =
+  print_endline "Testing string_of_expr...";
+
+  let test_cases = [
+    (Var "x", "x");
+    (Float 3.14, "3.14");
+    (Add (Var "x", Float 2.), "x + 2.");
+    (Mult (Var "x", Add (Var "y", Float 3.)), "x * (y + 3.)");
+    (Pow (Var "x", Float 2.), "x^2.");
+    (Exp (Var "x"), "exp(x)");
+    (Log (Mult (Var "x", Var "y")), "log(x * y)");
+    (Sub (Var "x", Var "y"), "x - y");
+    (Div (Var "x", Add (Var "y", Float 1.)), "x / (y + 1.)")
+  ] in
+
+  List.iter (fun (input, expected) ->
+    let result = string_of_expr input in
+    if result <> expected then
+      Printf.printf "Input: %s\nExpected: %s\nGot: %s\n\n"
+        (string_of_expr input) expected result
+  ) test_cases;
+
+  print_endline "✓ string_of_expr tests completed!\n"
+
+
+let test_latex_of_expr () =
+  print_endline "Testing latex_of_expr...";
+
+  let test_cases = [
+    (Var "x", "x");
+    (Float 3.14, "3.14");
+    (Add (Var "x", Float 2.), "x + 2.");
+    (Mult (Var "x", Add (Var "y", Float 3.)), "x \\cdot (y + 3.)");
+    (Pow (Var "x", Float 2.), "x^{2.}");
+    (Exp (Var "x"), "e^{x}");
+    (Log (Mult (Var "x", Var "y")), "\\log{x \\cdot y}");
+    (Sub (Var "x", Var "y"), "x - y");
+    (Div (Var "x", Add (Var "y", Float 1.)), "\\frac{x}{y + 1.}")
+  ] in
+
+  List.iter (fun (input, expected) ->
+    let result = latex_of_expr input in
+    if result <> expected then
+      Printf.printf "Input: %s\nExpected: %s\nGot: %s\n\n"
+        (string_of_expr input) expected result
+  ) test_cases;
+
+  print_endline "✓ latex_of_expr tests completed!\n"
+
+
 let test_eval () =
   print_endline "Testing expression evaluation...";
 
@@ -236,6 +286,8 @@ let test_gradient_descent () =
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
+  test_string_of_expr ();
+  test_latex_of_expr ();
   test_simplify ();
   test_eval ();
   test_derivative ();

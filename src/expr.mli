@@ -21,6 +21,7 @@ val ( ^: ) : expr -> expr -> expr
 val ( =:= ) : expr -> expr -> bool
 
 val string_of_expr : expr -> string
+val latex_of_expr : expr -> string
 
 val simplify_once : expr -> expr
 val simplify : expr -> expr

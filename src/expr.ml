@@ -43,40 +43,55 @@ let rec (=:=) e1 e2 =
   | _ -> false
 
 
+(* General precedence function for determining when parentheses are needed. *)
+let precedence = function
+  | Add _ | Sub _ -> 1                 (* Lowest precedence *)
+  | Mult _ | Div _ -> 2                (* Medium precedence *)
+  | Pow _ -> 3                         (* Higher precedence *)
+  | Exp _ | Log _ | Sin _ | Cos _ -> 4 (* Functions *)
+  | Float _ | Var _ -> 5               (* Constants and variables have the highest precedence *)
+
+
+(* General parenthesize function for different conversions. *)
+let parenthesize parent_prec child_expr converter =
+  let child_prec = precedence child_expr in
+  let child_str = converter child_expr in
+  if child_prec < parent_prec then
+    "(" ^ child_str ^ ")"
+  else
+    child_str
+
+
 (* Convert expression to a string for debugging and visualization *)
 let rec string_of_expr expr =
-  (* Precedence levels for operations to decide when parentheses are necessary. *)
-  let precedence = function
-    | Add _ | Sub _ -> 1                 (* Lowest precedence *)
-    | Mult _ | Div _ -> 2                (* Medium precedence *)
-    | Pow _ -> 3                         (* Higher precedence *)
-    | Exp _ | Log _ | Sin _ | Cos _ -> 4 (* Functions *)
-    | Float _ | Var _ -> 5               (* Constants and variables have the highest precedence *)
-  in
-
-  (* Conditionally wrap an expression in parentheses if its precedence is lower. *)
-  let parenthesize parent_prec child_expr =
-    let child_prec = precedence child_expr in
-    let child_str = string_of_expr child_expr in
-    if child_prec < parent_prec then
-      "(" ^ child_str ^ ")"
-    else
-      child_str
-  in
-
-  (* Pattern match to construct the string representation of the expression. *)
   match expr with
-  | Float x -> string_of_float x         
-  | Var s   -> s                           
-  | Exp a   -> "exp(" ^ string_of_expr a ^ ")"
-  | Log a   -> "log(" ^ string_of_expr a ^ ")"
-  | Sin a   -> "sin(" ^ string_of_expr a ^ ")"
-  | Cos a   -> "cos(" ^ string_of_expr a ^ ")"
-  | Add (a, b)  -> parenthesize 1 a ^ " + " ^ parenthesize 1 b
-  | Sub (a, b)  -> parenthesize 1 a ^ " - " ^ parenthesize 2 b
-  | Mult (a, b) -> parenthesize 2 a ^ " * " ^ parenthesize 2 b
-  | Div (a, b)  -> parenthesize 2 a ^ " / " ^ parenthesize 3 b
-  | Pow (a, b)  -> parenthesize 3 a ^ "^"   ^ parenthesize 4 b
+  | Float x -> string_of_float x
+  | Var s -> s
+  | Exp a -> "exp(" ^ string_of_expr a ^ ")"
+  | Log a -> "log(" ^ string_of_expr a ^ ")"
+  | Sin a -> "sin(" ^ string_of_expr a ^ ")"
+  | Cos a -> "cos(" ^ string_of_expr a ^ ")"
+  | Add (a, b) -> parenthesize 1 a string_of_expr ^ " + " ^ parenthesize 1 b string_of_expr
+  | Sub (a, b) -> parenthesize 1 a string_of_expr ^ " - " ^ parenthesize 2 b string_of_expr
+  | Mult(a, b) -> parenthesize 2 a string_of_expr ^ " * " ^ parenthesize 2 b string_of_expr
+  | Div (a, b) -> parenthesize 2 a string_of_expr ^ " / " ^ parenthesize 3 b string_of_expr
+  | Pow (a, b) -> parenthesize 3 a string_of_expr ^ "^" ^ parenthesize 4 b string_of_expr
+
+
+(* Convert expression to LaTeX for visualization and reporting *)
+let rec latex_of_expr expr =
+  match expr with
+  | Float x -> string_of_float x
+  | Var s -> s
+  | Exp a -> "e^{" ^ latex_of_expr a ^ "}"
+  | Log a -> "\\log{" ^ latex_of_expr a ^ "}"
+  | Sin a -> "\\sin{" ^ latex_of_expr a ^ "}"
+  | Cos a -> "\\cos{" ^ latex_of_expr a ^ "}"
+  | Add (a, b) -> parenthesize 1 a latex_of_expr ^ " + " ^ parenthesize 1 b latex_of_expr
+  | Sub (a, b) -> parenthesize 1 a latex_of_expr ^ " - " ^ parenthesize 2 b latex_of_expr
+  | Mult(a, b) -> parenthesize 2 a latex_of_expr ^ " \\cdot " ^ parenthesize 2 b latex_of_expr
+  | Div (a, b) -> "\\frac{" ^ latex_of_expr a ^ "}{" ^ latex_of_expr b ^ "}"
+  | Pow (a, b) -> parenthesize 3 a latex_of_expr ^ "^{" ^ parenthesize 4 b latex_of_expr ^ "}"
 
 
 (* Helper function to apply simplify recursively only once *)

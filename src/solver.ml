@@ -25,7 +25,7 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
   then Ok x
   else newton_raphson 
          ~f ~f' ~variable 
-         ~x:(x -. fx /. f'x) 
+         ~x:(x -. fx /. f'x) (* x <- x - f(x)/f'(x) *)
          ~iter:(iter + 1)
          ~tol ~max_iter 
 

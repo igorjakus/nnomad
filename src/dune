@@ -1,5 +1,5 @@
 (library
  (name nnomad)
- (modules expr eval derivatives optimization solver)
- (libraries owl)
+ (modules expr eval derivatives optimization solver bisection)
+ ; (libraries owl)
 ) 

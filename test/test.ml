@@ -2,6 +2,7 @@ open Nnomad.Expr
 open Nnomad.Eval
 open Nnomad.Derivatives
 open Nnomad.Optimization
+open Nnomad.Newton
 
 
 let test_env () =
@@ -282,6 +283,68 @@ let test_gradient_descent () =
   print_endline "✓ Gradient descent tests completed!\n"
 
 
+let test_newton () =
+  print_endline "Testing Newton-Raphson solver...";
+
+  let test_cases = [
+    (* Basic equations *)
+    ((fun () ->
+       let eq = (Pow (Var "x", Float 2.), Float 4.) in
+       match solve_newton eq ~initial_guess:3.0 with
+       | Ok x -> Float.abs (x -. 2.0) < 1e-6
+       | Error _ -> false));
+
+    (* Trigonometric equations *)
+    ((fun () ->
+       let eq = (Cos (Var "x"), Float 0.) in
+       match solve_newton eq ~initial_guess:1.0 with
+       | Ok x -> Float.abs (x -. (Float.pi /. 2.)) < 1e-6
+       | Error _ -> false));
+
+    ((fun () ->
+       let eq = (Sin (Var "x"), Float 0.5) in
+       match solve_newton eq ~initial_guess:0.0 with
+       | Ok x -> Float.abs (x -. (Float.pi /. 6.)) < 1e-6
+       | Error _ -> false));
+
+    (* Complex trigonometric equations *)
+    ((fun () ->
+       let eq = (Sin(Var "x") *: Cos(Var "x"), Float 0.25) in
+       match solve_newton eq ~initial_guess:0.0 with
+       | Ok x -> Float.abs (x -. 0.261799387791) < 1e-6
+       | Error _ -> false));
+
+    (* Exponential and logarithmic equations *)
+    ((fun () ->
+       let eq = (Exp (Var "x"), Float 1.) in
+       match solve_newton eq ~initial_guess:1.0 with
+       | Ok x -> Float.abs x < 1e-6
+       | Error _ -> false));
+
+    ((fun () ->
+       let eq = (Log (Var "x"), Float 1.) in
+       match solve_newton eq ~initial_guess:2.0 with
+       | Ok x -> Float.abs (x -. exp 1.) < 1e-6
+       | Error _ -> false));
+
+    (* Polynomial equations *)
+    ((fun () ->
+       let eq = (((Var "x" -: Float 2.13) ^: Float 3.) +: (Var "x" -: Float 2.13), Float 0.) in
+       match solve_newton eq ~initial_guess:2.0 with
+       | Ok x -> Float.abs (x -. 2.13) < 1e-6
+       | Error _ -> false));
+  ] in
+
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());
+    with Assert_failure _ ->
+      print_endline "Failed\n"
+  ) test_cases;
+  
+  print_endline "✓ Newton-Raphson solver tests completed!\n"
+
+
 (* Run all tests *)
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
@@ -293,6 +356,7 @@ let run_tests () =
   test_derivative ();
   test_gradient ();
   test_gradient_descent ();
+  test_newton ();
   print_endline "All tests completed successfully! ✓\n";;
 
 

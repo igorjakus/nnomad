@@ -2,8 +2,8 @@ open Expr
 
 
 (* Computes the derivative of an expression with respect to a variable *)
-let rec derivative expr var = 
-  begin match simplify expr with
+let rec derivative expr var = simplify (
+  match expr with
   | Float _ -> Float 0.
   | Var x when x = var -> Float 1.
   | Var _ -> Float 0.
@@ -23,8 +23,7 @@ let rec derivative expr var =
       let num = (derivative f var *: g) -: (f *: derivative g var) in
       let den = g *: g in
       num /: den
-  | Mult (f, g) -> (derivative f var *: g) +: (f *: derivative g var)
-  end |> simplify
+  | Mult (f, g) -> (derivative f var *: g) +: (f *: derivative g var))
 
 
 (* Compute gradient as partial derivatives with respect to all variables *)
@@ -38,6 +37,4 @@ let gradient expr: gradient =
 let rec nth_derivative expr var n =
   if n < 0 then invalid_arg "nth_derivative: negative order"
   else if n = 0 then expr
-  else 
-    let expr = simplify (derivative expr var) in 
-    nth_derivative expr var (n - 1)
+  else nth_derivative (derivative expr var) var (n - 1)

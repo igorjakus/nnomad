@@ -31,11 +31,12 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
 
 
 (* Solve a single-variable equation using the Newton-Raphson method. *)
-let solve_equation ((lhs, rhs): equation) ~variable ~initial_guess =
+let solve_equation ((lhs, rhs): equation) ~initial_guess =
   let f = lhs -: rhs in 
+  let variable = get_variable f in
   let f' = derivative f variable in
   newton_raphson 
-    ~f ~f' ~variable 
+    ~f ~f' ~variable
     ~x:initial_guess
     ~tol:1e-6
     ~max_iter:100

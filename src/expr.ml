@@ -43,6 +43,34 @@ let rec (=:=) e1 e2 =
   | _ -> false
 
 
+(* Set of strings *)
+module VarSet = Set.Make (struct
+  type t = string
+  let compare = compare
+end)
+
+(* Function to get list of variables in expression *)
+let get_variables expr =
+  let rec aux set expr =
+    match expr with
+    | Float _ -> set
+    | Var x -> VarSet.add x set
+    | Exp e | Log e | Sin e | Cos e -> aux set e
+
+    | Add (e1, e2) | Sub (e1, e2) 
+    | Mult(e1, e2) | Div (e1, e2)
+    | Pow (e1, e2) -> aux (aux set e2) e1
+  in
+  VarSet.elements (aux VarSet.empty expr)
+
+(* Get variable if there's exactly one, fail if 0 or >= 2 *)
+let get_variable expr = 
+  match get_variables expr with 
+  | []  -> failwith "no variables in expression"
+  | [x] -> x
+  | _   -> failwith "more than one variable in expression"
+
+
 (* General precedence function for determining when parentheses are needed. *)
 let precedence = function
   | Add _ | Sub _ -> 1                 (* Lowest precedence *)

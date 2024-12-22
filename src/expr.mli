@@ -20,6 +20,9 @@ val ( /: ) : expr -> expr -> expr
 val ( ^: ) : expr -> expr -> expr
 val ( =:= ) : expr -> expr -> bool
 
+val get_variables : expr -> string list
+val get_variable : expr -> string
+
 val string_of_expr : expr -> string
 val latex_of_expr : expr -> string
 

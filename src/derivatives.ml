@@ -29,17 +29,9 @@ let rec derivative expr var =
 
 (* Compute gradient as partial derivatives with respect to all variables *)
 let gradient expr: gradient =
-  (* Get all unique variables in an expression *)
-  let rec get_vars expr = match expr with
-    | Var x -> [x]
-    | Float _ -> []
-    | Add (a, b) | Sub (a, b) | Mult (a, b) 
-    | Div (a, b) | Pow (a, b) -> List.sort_uniq String.compare (get_vars a @ get_vars b)
-    | Exp a | Log a | Sin a | Cos a -> get_vars a
-  in
-
-  let vars = get_vars expr in
-  List.map (fun var -> (var, simplify (derivative expr var))) vars
+  List.map 
+  (fun var -> (var, derivative expr var)) 
+  (get_variables expr)
 
 
 (* Computes nth derivative of an expression with respect to a variable *)

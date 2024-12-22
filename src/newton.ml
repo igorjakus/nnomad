@@ -3,7 +3,6 @@ open Expr
 open Derivatives
 let (>>=) = Result.bind
 
-type equation = expr * expr
 type solve_error = DivisionByZero | NoConvergence | InvalidInput of string
 
 

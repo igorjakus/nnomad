@@ -13,6 +13,8 @@ type expr =
 
 type gradient = (string * expr) list
 
+type equation = expr * expr
+
 val ( +: ) : expr -> expr -> expr
 val ( -: ) : expr -> expr -> expr
 val ( *: ) : expr -> expr -> expr

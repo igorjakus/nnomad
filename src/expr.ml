@@ -17,6 +17,10 @@ type expr =
 type gradient = (string * expr) list
 
 
+(* Equation is lhs expression and rhs expression *)
+type equation = expr * expr
+
+
 (* Operator overloading for more natural expression syntax *)
 let ( +: ) a b = Add (a, b)
 let ( -: ) a b = Sub (a, b)

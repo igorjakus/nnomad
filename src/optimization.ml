@@ -1,7 +1,6 @@
+open Expr
 open Eval
 open Derivatives
-open Solver
-open Expr
 
 
 (* Perform gradient descent to minimize the expression *)

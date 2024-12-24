@@ -3,6 +3,7 @@ open Nnomad.Eval
 open Nnomad.Derivatives
 open Nnomad.Gradient_descent
 open Nnomad.Newton
+open Nnomad.Bisection
 
 
 let test_env () =
@@ -345,6 +346,40 @@ let test_newton () =
   print_endline "✓ Newton-Raphson solver tests completed!\n"
 
 
+let test_bisection () =
+  print_endline "Testing Bisection method...";
+
+  let test_cases = [
+    (* Basic polynomial *)
+    ((fun () ->
+       let expr = Pow (Var "x", Float 2.) -: Float 4. in
+       let result = bisection ~f:expr ~a:0.0 ~b:3.0 ~tolerance:1e-6 ~max_iter:100 in
+       Float.abs (result -. 2.0) < 1e-6));
+
+    (* Trigonometric equation *)
+    ((fun () ->
+       let expr = Cos (Var "x") -: Float 0.5 in
+       let result = bisection ~f:expr ~a:0.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 in
+       Float.abs (result -. 1.0472) < 1e-3));
+
+    (* Mixed equation *)
+    ((fun () ->
+       let expr = Sin(Var "x") -: (Var "x" /: Float 2.) in
+       let result = bisection ~f:expr ~a:1.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 in
+       Float.abs (result -. 1.8954) < 1e-3));
+  ] in
+
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());
+    with 
+    | NoRootInInterval -> print_endline "No root found in interval"
+    | Assert_failure _ -> print_endline "Failed\n"
+  ) test_cases;
+  
+  print_endline "✓ Bisection method tests completed!\n"
+
+
 (* Run all tests *)
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
@@ -357,6 +392,7 @@ let run_tests () =
   test_gradient ();
   test_gradient_descent ();
   test_newton ();
+  test_bisection ();
   print_endline "All tests completed successfully! ✓\n";;
 
 

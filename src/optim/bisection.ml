@@ -8,7 +8,8 @@ exception NoRootInInterval
 let bisection ~f ~a ~b ~tolerance ~max_iter =
   let variable = get_variable f in
   let is_zero x = abs_float x < tolerance in
-  let eval_at x = eval (create_env [(variable, x)]) f in
+  let env = create_env [] in  (* make env only once *)
+  let eval_at x = eval (update_env env [(variable, x)]) f in
 
   let rec loop a b iter =
     if iter > max_iter then
@@ -29,3 +30,9 @@ let bisection ~f ~a ~b ~tolerance ~max_iter =
         raise NoRootInInterval
   in
   loop a b 0
+
+
+(* Function to solve a single-variable equation using the bisection method *)
+let solve_bisection ((lhs, rhs): equation) ~a ~b ~tolerance ~max_iter =
+  let f = lhs -: rhs in
+  bisection ~f ~a ~b ~tolerance ~max_iter

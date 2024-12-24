@@ -3,3 +3,5 @@ numcaml.ml
 banach.ml
 _build/
 ideas.txt
+.DS_Store
+trash/

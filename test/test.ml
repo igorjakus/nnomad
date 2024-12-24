@@ -1,7 +1,7 @@
 open Nnomad.Expr
 open Nnomad.Eval
 open Nnomad.Derivatives
-open Nnomad.Optimization
+open Nnomad.Gradient_descent
 open Nnomad.Newton
 
 

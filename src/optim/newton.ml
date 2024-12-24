@@ -2,12 +2,7 @@
 open Expr
 open Derivatives
 open Eval
-
-
-let (>>=) = Result.bind
-
-type solve_error = DivisionByZero | NoConvergence | InvalidInput of string
-
+open Optimization_types
 
 (* The Newton-Raphson method for solving a single-variable equation. *)
 let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
@@ -15,21 +10,18 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
   let fx  = eval env f in
   let f'x = eval env f' in
   
-  (if iter >= max_iter 
-   then Error NoConvergence 
-   else Ok ()) >>= fun () ->
-  
-  (if Float.abs f'x < tol 
-   then Error DivisionByZero 
-   else Ok ()) >>= fun () ->
-    
-  if Float.abs fx < tol 
-  then Ok x
-  else newton_raphson 
-         ~f ~f' ~variable 
-         ~x:(x -. fx /. f'x) (* x <- x - f(x)/f'(x) *)
-         ~iter:(iter + 1)
-         ~tol ~max_iter 
+  if iter >= max_iter then 
+    Error NoConvergence
+  else if Float.abs f'x < tol then 
+    Error DivisionByZero
+  else if Float.abs fx < tol then
+    Ok x
+  else 
+    newton_raphson 
+      ~f ~f' ~variable 
+      ~x:(x -. fx /. f'x) (* x <- x - f(x)/f'(x) *)
+      ~iter:(iter + 1)
+      ~tol ~max_iter
 
 
 (* Solve a single-variable equation using the Newton-Raphson method. *)

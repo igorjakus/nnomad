@@ -255,23 +255,28 @@ let test_gradient_descent () =
     ((fun () ->
         let expr = Var "x" *: Var "x" in
         let env = create_env ["x", 10.0] in
-        let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
-        abs_float (get_value "x" final_env) < 1e-3));
+        match gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 with
+        | Ok final_env -> abs_float (get_value "x" final_env) < 1e-3
+        | Error _ -> false));
     
     ((fun () ->
         let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
         let env = create_env ["x", 1.0; "y", 1.0] in
-        let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 in
-        abs_float (get_value "x" final_env) < 1e-3 && 
-        abs_float (get_value "y" final_env) < 1e-3));
+        match gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 with
+        | Ok final_env -> 
+            abs_float (get_value "x" final_env) < 1e-3 && 
+            abs_float (get_value "y" final_env) < 1e-3
+        | Error _ -> false));
     
     ((fun () ->
         let expr = Pow(Var "x" -: Float 1., Float 2.) +: 
                   Pow(Var "y" +: Float 2., Float 2.) in
         let env = create_env ["x", 0.0; "y", 0.0] in
-        let final_env = gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:200 in
-        abs_float (get_value "x" final_env -. 1.0) < 1e-2 && 
-        abs_float (get_value "y" final_env +. 2.0) < 1e-2));
+        match gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:200 with
+        | Ok final_env ->
+            abs_float (get_value "x" final_env -. 1.0) < 1e-2 && 
+            abs_float (get_value "y" final_env +. 2.0) < 1e-2
+        | Error _ -> false));
   ] in
 
   List.iter (fun test_fn ->
@@ -353,28 +358,30 @@ let test_bisection () =
     (* Basic polynomial *)
     ((fun () ->
        let expr = Pow (Var "x", Float 2.) -: Float 4. in
-       let result = bisection ~f:expr ~a:0.0 ~b:3.0 ~tolerance:1e-6 ~max_iter:100 in
-       Float.abs (result -. 2.0) < 1e-6));
+       match bisection ~f:expr ~a:0.0 ~b:3.0 ~tolerance:1e-6 ~max_iter:100 with
+       | Ok result -> Float.abs (result -. 2.0) < 1e-6
+       | Error _ -> false));
 
     (* Trigonometric equation *)
     ((fun () ->
        let expr = Cos (Var "x") -: Float 0.5 in
-       let result = bisection ~f:expr ~a:0.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 in
-       Float.abs (result -. 1.0472) < 1e-3));
+       match bisection ~f:expr ~a:0.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 with
+       | Ok result -> Float.abs (result -. 1.0472) < 1e-3
+       | Error _ -> false));
 
     (* Mixed equation *)
     ((fun () ->
        let expr = Sin(Var "x") -: (Var "x" /: Float 2.) in
-       let result = bisection ~f:expr ~a:1.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 in
-       Float.abs (result -. 1.8954) < 1e-3));
+       match bisection ~f:expr ~a:1.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 with
+       | Ok result -> Float.abs (result -. 1.8954) < 1e-3
+       | Error _ -> false));
   ] in
 
   List.iter (fun test_fn ->
     try
       assert (test_fn ());
-    with 
-    | NoRootInInterval -> print_endline "No root found in interval"
-    | Assert_failure _ -> print_endline "Failed\n"
+    with Assert_failure _ -> 
+      print_endline "Failed\n"
   ) test_cases;
   
   print_endline "✓ Bisection method tests completed!\n"

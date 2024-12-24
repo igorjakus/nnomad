@@ -1,6 +1,6 @@
 (library
  (name nnomad)
- (modules expr eval derivatives gradient_descent newton bisection)
-  ; (libraries owl)
+ (modules expr eval derivatives optimization_types gradient_descent newton bisection)
+ ; (libraries owl)
 )
 (include_subdirs unqualified)

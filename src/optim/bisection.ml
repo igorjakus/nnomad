@@ -3,7 +3,6 @@ open Expr
 open Optimization_types
 
 
-
 let bisection ~f ~a ~b ~tolerance ~max_iter =
   (if tolerance <= 0.0 then
     Error (InvalidInput "Tolerance must be positive")

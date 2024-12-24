@@ -1,8 +1,8 @@
-(* solver.ml *)
 open Expr
 open Derivatives
 open Eval
 open Optimization_types
+
 
 (* The Newton-Raphson method for solving a single-variable equation. *)
 let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =

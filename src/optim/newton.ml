@@ -1,6 +1,9 @@
 (* solver.ml *)
 open Expr
 open Derivatives
+open Eval
+
+
 let (>>=) = Result.bind
 
 type solve_error = DivisionByZero | NoConvergence | InvalidInput of string
@@ -8,9 +11,9 @@ type solve_error = DivisionByZero | NoConvergence | InvalidInput of string
 
 (* The Newton-Raphson method for solving a single-variable equation. *)
 let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
-  let env = Eval.create_env [(variable, x)] in
-  let fx  = Eval.eval env f in
-  let f'x = Eval.eval env f' in
+  let env = create_env [(variable, x)] in
+  let fx  = eval env f in
+  let f'x = eval env f' in
   
   (if iter >= max_iter 
    then Error NoConvergence 

@@ -5,11 +5,13 @@ open Optimization_types
 
 
 let bisection ~f ~a ~b ~tolerance ~max_iter =
-  if tolerance <= 0.0 then
+  (if tolerance <= 0.0 then
     Error (InvalidInput "Tolerance must be positive")
-  else if max_iter <= 0 then
+   else Ok ()) >>= fun () ->
+  
+  (if max_iter <= 0 then
     Error (InvalidInput "Max iterations must be positive")
-  else
+   else Ok ()) >>= fun () ->
 
   let variable = get_variable f in
   let is_zero x = abs_float x < tolerance in

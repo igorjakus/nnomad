@@ -6,11 +6,13 @@ open Optimization_types
 
 (* Perform gradient descent to minimize the expression *)
 let gradient_descent ~expr ~env ~learning_rate ~iterations =
-  if iterations <= 0 then
+  (if iterations <= 0 then
     Error (InvalidInput "Iterations must be positive")
-  else if learning_rate <= 0.0 then
+   else Ok ()) >>= fun () ->
+  
+  (if learning_rate <= 0.0 then
     Error (InvalidInput "Learning rate must be positive")
-  else
+   else Ok ()) >>= fun () ->
 
   (* Compute new values for all variables based on gradients *)
   let calculate_updated_values ~expr ~env ~learning_rate =

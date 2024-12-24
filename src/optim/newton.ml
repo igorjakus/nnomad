@@ -10,11 +10,15 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
   let fx  = eval env f in
   let f'x = eval env f' in
   
-  if iter >= max_iter then 
+  (if iter >= max_iter then 
     Error NoConvergence
-  else if Float.abs f'x < tol then 
+   else Ok ()) >>= fun () ->
+  
+  (if Float.abs f'x < tol then 
     Error DivisionByZero
-  else if Float.abs fx < tol then
+   else Ok ()) >>= fun () ->
+  
+  if Float.abs fx < tol then
     Ok x
   else 
     newton_raphson 

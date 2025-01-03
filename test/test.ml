@@ -350,6 +350,34 @@ let test_newton () =
        match solve_newton eq ~initial_guess:2.0 with
        | Ok x -> Float.abs (x -. 2.13) < 1e-6
        | Error _ -> false));
+
+    (* Multivariate equations *)
+    ((fun () ->
+       let eq = (Var "x" *: Var "x" +: Var "y" *: Var "y", Float 1.) in
+       match solve_newton_multivar eq ~initial_guess:[("x", 0.5); ("y", 0.5)] with
+       | Ok result -> 
+           let x = List.assoc "x" result in
+           let y = List.assoc "y" result in
+           Float.abs (x *. x +. y *. y -. 1.0) < 1e-6
+       | Error _ -> false));
+
+    ((fun () ->
+       let eq = (Var "x" *: Var "y", Float 1.) in
+       match solve_newton_multivar eq ~initial_guess:[("x", 2.05); ("y", 0.45)] with
+       | Ok result ->
+           let x = List.assoc "x" result in
+           let y = List.assoc "y" result in
+           Float.abs (x *. y -. 1.0) < 1e-6
+       | Error _ -> false));
+
+    ((fun () ->
+       let eq = (Sin(Var "x") *: Cos(Var "y"), Float 0.25) in
+       match solve_newton_multivar eq ~initial_guess:[("x", 0.2); ("y", 0.2)] with
+       | Ok result ->
+           let x = List.assoc "x" result in
+           let y = List.assoc "y" result in
+           Float.abs (sin(x) *. cos(y) -. 0.25) < 1e-6
+       | Error _ -> false));
   ] in
 
   List.iter (fun test_fn ->

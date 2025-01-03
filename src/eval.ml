@@ -20,6 +20,10 @@ let update_env (env: env) (updates: (string * float) list) =
     (fun acc (var, value) -> StringMap.add var value acc)
     env updates
 
+  
+(* Get the variable bindings from the environment *)
+let bindings = StringMap.bindings
+
 
 (* Evaluates an expression given an environment mapping variables to values *)
 let rec eval (env: env) (expr: expr): float =

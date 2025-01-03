@@ -42,6 +42,17 @@ let test_env () =
        let env = create_env [("x", 1.0); ("x", 2.0)] in
        let expr = Var "x" in
        eval env expr = 2.0);
+
+    (fun () ->
+       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let binds = bindings env in
+       List.length binds = 2 && 
+       List.mem ("x", 2.0) binds && 
+       List.mem ("y", 3.0) binds);
+
+    (fun () ->
+       let env = create_env [] in
+       bindings env = []);
   ] in
 
   List.iter (fun test_fn ->

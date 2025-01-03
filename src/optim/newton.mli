@@ -6,23 +6,25 @@ val newton_raphson :
   variable:string ->
   x:float ->
   iter:int -> 
-  tol:float -> 
-  max_iter:int -> 
+  tol:float ->
+  max_iter:int ->
   (float, optim_error) result
 
 val solve_newton :
-  Expr.equation -> 
-  initial_guess:float -> 
+  Expr.equation ->
+  initial_guess:float ->
+  max_iter:int ->
   (float, optim_error) result
 
 val newton_raphson_multivar :
   f:Expr.expr ->
-  initial_guess:(string * float) list ->
+  initial_guess:Eval.env ->
   tol:float ->
   max_iter:int ->
-  ((string * float) list, optim_error) result
+  (Eval.env, optim_error) result
 
 val solve_newton_multivar :
   Expr.equation ->
-  initial_guess:(string * float) list ->
-  ((string * float) list, optim_error) result
+  initial_guess:Eval.env ->
+  max_iter:int ->
+  (Eval.env, optim_error) result

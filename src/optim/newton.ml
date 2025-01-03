@@ -6,7 +6,7 @@ open Optimization_types
 
 (* The Newton-Raphson method for solving a single-variable equation. *)
 let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
-  let env = create_env [(variable, x)] in
+  let env = [(variable, x)] in
   let fx  = eval env f in
   let f'x = eval env f' in
   
@@ -29,7 +29,7 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
 
 
 (* Solve a single-variable equation using the Newton-Raphson method. *)
-let solve_newton ((lhs, rhs): equation) ~initial_guess =
+let solve_newton ((lhs, rhs): equation) ~initial_guess ~max_iter =
   let f = lhs -: rhs in 
   let variable = get_variable f in
   let f' = derivative f variable in
@@ -38,15 +38,15 @@ let solve_newton ((lhs, rhs): equation) ~initial_guess =
     ~x:initial_guess
     ~iter:0
     ~tol:1e-6
-    ~max_iter:100
+    ~max_iter
 
 
 (* The multivariate Newton-Raphson method for a single equation f=0 in multiple variables. *)
-let newton_raphson_multivar ~f ~initial_guess ~tol ~max_iter =
+let newton_raphson_multivar ~f ~initial_guess ~tol ~max_iter = (* TODO: add grad as parameter *)
   let rec loop ~env ~iter =
     let fx = eval env f in
     if Float.abs fx < tol then
-      Ok (bindings env)
+      Ok env
     else if iter >= max_iter then
       Error NoConvergence
     else
@@ -67,10 +67,13 @@ let newton_raphson_multivar ~f ~initial_guess ~tol ~max_iter =
         in
         loop ~env:next_env ~iter:(iter + 1)
   in
-  loop ~env:(create_env initial_guess) ~iter:0
+  loop ~env:initial_guess ~iter:0
 
 
 (* Solve a multi-variable equation using multivariable Newton method *)
-let solve_newton_multivar ((lhs, rhs): equation) ~initial_guess =
+let solve_newton_multivar ((lhs, rhs): equation) ~initial_guess ~max_iter =
   let f = lhs -: rhs in
-  newton_raphson_multivar ~f ~initial_guess ~tol:1e-6 ~max_iter:100
+  newton_raphson_multivar 
+  ~f ~initial_guess ~max_iter
+  ~tol:1e-6 
+  

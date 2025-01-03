@@ -12,21 +12,16 @@ let bisection ~f ~a ~b ~tolerance ~max_iter =
     Error (InvalidInput "Max iterations must be positive")
    else Ok ()) >>= fun () ->
 
-  let variable = get_variable f in
-  let is_zero x = abs_float x < tolerance in
-  let env = create_env [] in  (* make env only once *)
-  let eval_at x = eval (update_env env [(variable, x)]) f in
-
   let rec loop a b iter =
     if iter > max_iter then
       Error MaxIterationsReached
     else
-      let fa = eval_at a in
-      let fb = eval_at b in
+      let fa = eval_at a f in
+      let fb = eval_at b f in
       let mid = (a +. b) /. 2.0 in
-      let fmid = eval_at mid in
+      let fmid = eval_at mid f in
 
-      if is_zero fmid then
+      if abs_float fmid < tolerance then
         Ok mid
       else if fa *. fmid < 0.0 then
         loop a mid (iter + 1)

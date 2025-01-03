@@ -5,9 +5,9 @@ open Optimization_types
 
 
 (* Perform gradient descent to minimize the expression *)
-let gradient_descent ~expr ~env ~learning_rate ~iterations =
-  (if iterations <= 0 then
-    Error (InvalidInput "Iterations must be positive")
+let gradient_descent ~expr ~env ~learning_rate ~max_iter =
+  (if max_iter <= 0 then
+    Error (InvalidInput "max_iter must be positive")
    else Ok ()) >>= fun () ->
   
   (if learning_rate <= 0.0 then
@@ -28,7 +28,7 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
     update_env env updates in
 
   let rec loop env i =
-    if i >= iterations then 
+    if i >= max_iter then 
       Ok env
     else 
       loop (gradient_descent_step ~expr ~env ~learning_rate) (i + 1)
@@ -38,11 +38,11 @@ let gradient_descent ~expr ~env ~learning_rate ~iterations =
 
 
 (* Solve an equation using gradient descent *)
-let solve_gd ((lhs, rhs): equation) ~initial_guess ~lr ~iterations = 
+let solve_gd ((lhs, rhs): equation) ~initial_guess ~learning_rate ~max_iter = 
   let f = (lhs -: rhs) in
   let f_sq = simplify (f *: f) in 
   gradient_descent 
     ~expr:f_sq
     ~env:initial_guess
-    ~learning_rate:lr
-    ~iterations
+    ~learning_rate
+    ~max_iter

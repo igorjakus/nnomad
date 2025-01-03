@@ -11,48 +11,32 @@ let test_env () =
 
   let test_cases = [  
     (fun () ->
-       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let env = [("x", 2.0); ("y", 3.0)] in
        let expr = Var "x" +: Var "y" in
        eval env expr = 5.0);
 
     (fun () ->
-       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let env = [("x", 2.0); ("y", 3.0)] in
        let env = update_env env [("x", 1.0)] in
        let expr = Var "x" +: Var "y" in
        eval env expr = 4.0);
 
     (fun () ->
-       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let env = [("x", 2.0); ("y", 3.0)] in
        let gradient = [("x", Float 1.0); ("y", Float (-1.0))] in
        eval_grad env gradient = [("x", 1.0); ("y", -1.0)]);
 
     (fun () ->
-       let env = create_env [("x", 2.0)] in
+       let env = [("x", 2.0)] in
        let env = update_env env [("y", 3.0)] in
        let expr = Var "x" +: Var "y" in
        eval env expr = 5.0);
 
     (fun () ->
-       let env = create_env [("x", 2.0); ("y", 3.0)] in
+       let env = [("x", 2.0); ("y", 3.0)] in
        let env = update_env env [("x", 4.0); ("y", 1.0)] in
        let expr = Var "x" *: Var "y" in
        eval env expr = 4.0);
-
-    (fun () ->
-       let env = create_env [("x", 1.0); ("x", 2.0)] in
-       let expr = Var "x" in
-       eval env expr = 2.0);
-
-    (fun () ->
-       let env = create_env [("x", 2.0); ("y", 3.0)] in
-       let binds = bindings env in
-       List.length binds = 2 && 
-       List.mem ("x", 2.0) binds && 
-       List.mem ("y", 3.0) binds);
-
-    (fun () ->
-       let env = create_env [] in
-       bindings env = []);
   ] in
 
   List.iter (fun test_fn ->
@@ -147,7 +131,7 @@ let test_latex_of_expr () =
 let test_eval () =
   print_endline "Testing expression evaluation...";
 
-  let env = create_env ["x", 2.0; "y", 3.0] in
+  let env = [("x", 2.0); ("y", 3.0)] in
   let test_cases = [
     ((Var "x" +: Var "y", 5.0));
     ((Var "x" *: Var "y", 6.0));
@@ -234,7 +218,7 @@ let test_gradient () =
     
     ((fun () ->
         let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
-        let env = create_env ["x", 1.0; "y", 2.0] in
+        let env = [("x", 1.0); ("y", 2.0)] in
         let grad = gradient expr in
         let grad_values = eval_grad env grad in
         List.assoc "x" grad_values = 2.0 && 
@@ -243,7 +227,7 @@ let test_gradient () =
     ((fun () ->
         let expr = Sin(Var "x") *: Cos(Var "y") in
         let grad = gradient expr in
-        let env = create_env ["x", 0.0; "y", 0.0] in
+        let env = [("x", 0.0); ("y", 0.0)] in
         let grad_values = eval_grad env grad in
         Float.abs(List.assoc "x" grad_values -. 1.0) < 1e-10 && 
         Float.abs(List.assoc "y" grad_values -. 0.0) < 1e-10));
@@ -265,15 +249,15 @@ let test_gradient_descent () =
   let test_cases = [
     ((fun () ->
         let expr = Var "x" *: Var "x" in
-        let env = create_env ["x", 10.0] in
-        match gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 with
+        let env = [("x", 10.0)] in
+        match gradient_descent ~expr ~env ~learning_rate:0.1 ~max_iter:100 with
         | Ok final_env -> abs_float (get_value "x" final_env) < 1e-3
         | Error _ -> false));
     
     ((fun () ->
         let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
-        let env = create_env ["x", 1.0; "y", 1.0] in
-        match gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:100 with
+        let env = [("x", 1.0); ("y", 1.0)] in
+        match gradient_descent ~expr ~env ~learning_rate:0.1 ~max_iter:100 with
         | Ok final_env -> 
             abs_float (get_value "x" final_env) < 1e-3 && 
             abs_float (get_value "y" final_env) < 1e-3
@@ -282,8 +266,8 @@ let test_gradient_descent () =
     ((fun () ->
         let expr = Pow(Var "x" -: Float 1., Float 2.) +: 
                   Pow(Var "y" +: Float 2., Float 2.) in
-        let env = create_env ["x", 0.0; "y", 0.0] in
-        match gradient_descent ~expr ~env ~learning_rate:0.1 ~iterations:200 with
+        let env = [("x", 0.0); ("y", 0.0)] in
+        match gradient_descent ~expr ~env ~learning_rate:0.1 ~max_iter:200 with
         | Ok final_env ->
             abs_float (get_value "x" final_env -. 1.0) < 1e-2 && 
             abs_float (get_value "y" final_env +. 2.0) < 1e-2
@@ -307,75 +291,78 @@ let test_newton () =
     (* Basic equations *)
     ((fun () ->
        let eq = (Pow (Var "x", Float 2.), Float 4.) in
-       match solve_newton eq ~initial_guess:3.0 with
+       match solve_newton eq ~initial_guess:3.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. 2.0) < 1e-6
        | Error _ -> false));
 
     (* Trigonometric equations *)
     ((fun () ->
        let eq = (Cos (Var "x"), Float 0.) in
-       match solve_newton eq ~initial_guess:1.0 with
+       match solve_newton eq ~initial_guess:1.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. (Float.pi /. 2.)) < 1e-6
        | Error _ -> false));
 
     ((fun () ->
        let eq = (Sin (Var "x"), Float 0.5) in
-       match solve_newton eq ~initial_guess:0.0 with
+       match solve_newton eq ~initial_guess:0.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. (Float.pi /. 6.)) < 1e-6
        | Error _ -> false));
 
     (* Complex trigonometric equations *)
     ((fun () ->
        let eq = (Sin(Var "x") *: Cos(Var "x"), Float 0.25) in
-       match solve_newton eq ~initial_guess:0.0 with
+       match solve_newton eq ~initial_guess:0.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. 0.261799387791) < 1e-6
        | Error _ -> false));
 
     (* Exponential and logarithmic equations *)
     ((fun () ->
        let eq = (Exp (Var "x"), Float 1.) in
-       match solve_newton eq ~initial_guess:1.0 with
+       match solve_newton eq ~initial_guess:1.0 ~max_iter:50 with
        | Ok x -> Float.abs x < 1e-6
        | Error _ -> false));
 
     ((fun () ->
        let eq = (Log (Var "x"), Float 1.) in
-       match solve_newton eq ~initial_guess:2.0 with
+       match solve_newton eq ~initial_guess:2.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. exp 1.) < 1e-6
        | Error _ -> false));
 
     (* Polynomial equations *)
     ((fun () ->
        let eq = (((Var "x" -: Float 2.13) ^: Float 3.) +: (Var "x" -: Float 2.13), Float 0.) in
-       match solve_newton eq ~initial_guess:2.0 with
+       match solve_newton eq ~initial_guess:2.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. 2.13) < 1e-6
        | Error _ -> false));
 
     (* Multivariate equations *)
     ((fun () ->
        let eq = (Var "x" *: Var "x" +: Var "y" *: Var "y", Float 1.) in
-       match solve_newton_multivar eq ~initial_guess:[("x", 0.5); ("y", 0.5)] with
-       | Ok result -> 
-           let x = List.assoc "x" result in
-           let y = List.assoc "y" result in
+       let env_guess = [("x", 0.5); ("y", 0.5)] in
+       match solve_newton_multivar eq ~initial_guess:env_guess ~max_iter:100 with
+       | Ok final_env ->
+           let x = get_value "x" final_env in
+           let y = get_value "y" final_env in
            Float.abs (x *. x +. y *. y -. 1.0) < 1e-6
        | Error _ -> false));
 
     ((fun () ->
        let eq = (Var "x" *: Var "y", Float 1.) in
-       match solve_newton_multivar eq ~initial_guess:[("x", 2.05); ("y", 0.45)] with
-       | Ok result ->
-           let x = List.assoc "x" result in
-           let y = List.assoc "y" result in
+       let env_guess = [("x", 2.05); ("y", 0.45)] in
+       match solve_newton_multivar eq ~initial_guess:env_guess ~max_iter:100 with
+       | Ok final_env ->
+           let x = get_value "x" final_env in
+           let y = get_value "y" final_env in
            Float.abs (x *. y -. 1.0) < 1e-6
        | Error _ -> false));
 
     ((fun () ->
        let eq = (Sin(Var "x") *: Cos(Var "y"), Float 0.25) in
-       match solve_newton_multivar eq ~initial_guess:[("x", 0.2); ("y", 0.2)] with
-       | Ok result ->
-           let x = List.assoc "x" result in
-           let y = List.assoc "y" result in
+       let env_guess = ["x", 0.2; "y", 0.2] in
+       match solve_newton_multivar eq ~initial_guess:env_guess ~max_iter:100 with
+       | Ok final_env ->
+           let x = get_value "x" final_env in
+           let y = get_value "y" final_env in
            Float.abs (sin(x) *. cos(y) -. 0.25) < 1e-6
        | Error _ -> false));
   ] in

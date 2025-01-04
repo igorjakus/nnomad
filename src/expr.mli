@@ -1,15 +1,16 @@
 type expr =
   | Float of float
-  | Var of string
-  | Add of expr * expr
-  | Sub of expr * expr
-  | Mult of expr * expr
-  | Div of expr * expr
-  | Pow of expr * expr
-  | Exp of expr
-  | Log of expr
-  | Sin of expr
-  | Cos of expr
+  | Var   of string           (* Named variable *)
+  | Add   of expr * expr      (* Addition *)
+  | Sub   of expr * expr      (* Subtraction *)
+  | Mult  of expr * expr      (* Multiplication *)
+  | Div   of expr * expr      (* Division *)
+  | Pow   of expr * expr      (* Power with constant exponent *)
+  | Exp   of expr             (* Exponential function *)
+  | Log   of expr             (* Natural logarithm *)
+  | Sin   of expr             (* Sine function *)
+  | Cos   of expr             (* Cosine function *)
+  | Lazy  of (unit -> expr)   (* Lazy evaluation *)
 
 type gradient = (string * expr) list
 
@@ -30,3 +31,5 @@ val latex_of_expr : expr -> string
 
 val simplify_once : expr -> expr
 val simplify : expr -> expr
+
+val lazy_expr : (unit -> expr) -> expr

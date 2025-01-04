@@ -11,6 +11,7 @@ type expr =
   | Log   of expr             (* Natural logarithm *)
   | Sin   of expr             (* Sine function *)
   | Cos   of expr             (* Cosine function *)
+  | Lazy  of (unit -> expr)   (* Function that returns expr when needed *)
 
 
 (* Gradient is a list of pairs (var, partial derivative with respect to var) *)
@@ -43,6 +44,10 @@ let rec (=:=) e1 e2 =
   | Log a1, Log a2
   | Sin a1, Sin a2 
   | Cos a1, Cos a2 -> a1 =:= a2
+
+  | Lazy f1, Lazy f2 -> f1 () =:= f2 ()   (* Force evaluation only when comparing *)
+  | Lazy f, e -> f () =:= e               (* Handle one side lazy *)
+  | e, Lazy f -> e =:= f ()               (* Handle other side lazy *)
   
   | _ -> false
 
@@ -60,7 +65,7 @@ let get_variables expr =
     | Float _ -> set
     | Var x -> VarSet.add x set
     | Exp e | Log e | Sin e | Cos e -> aux set e
-
+    | Lazy f -> aux set (f ())  (* Changed: call function *)
     | Add (e1, e2) | Sub (e1, e2) 
     | Mult(e1, e2) | Div (e1, e2)
     | Pow (e1, e2) -> aux (aux set e2) e1
@@ -82,6 +87,7 @@ let precedence = function
   | Pow _ -> 3                         (* Higher precedence *)
   | Exp _ | Log _ | Sin _ | Cos _ -> 4 (* Functions *)
   | Float _ | Var _ -> 5               (* Constants and variables have the highest precedence *)
+  | Lazy _ -> 6                        (* Lazy expressions have the highest precedence *)
 
 
 (* General parenthesize function for different conversions. *)
@@ -108,6 +114,7 @@ let rec string_of_expr expr =
   | Mult(a, b) -> parenthesize 2 a string_of_expr ^ " * " ^ parenthesize 2 b string_of_expr
   | Div (a, b) -> parenthesize 2 a string_of_expr ^ " / " ^ parenthesize 3 b string_of_expr
   | Pow (a, b) -> parenthesize 3 a string_of_expr ^ "^" ^ parenthesize 4 b string_of_expr
+  | Lazy e -> "lazy(" ^ string_of_expr (e ()) ^ ")"
 
 
 (* Convert expression to LaTeX for visualization and reporting *)
@@ -124,6 +131,7 @@ let rec latex_of_expr expr =
   | Mult(a, b) -> parenthesize 2 a latex_of_expr ^ " \\cdot " ^ parenthesize 2 b latex_of_expr
   | Div (a, b) -> "\\frac{" ^ latex_of_expr a ^ "}{" ^ latex_of_expr b ^ "}"
   | Pow (a, b) -> parenthesize 3 a latex_of_expr ^ "^{" ^ parenthesize 4 b latex_of_expr ^ "}"
+  | Lazy e -> "lazy(" ^ latex_of_expr (e ()) ^ ")"
 
 
 (* Helper function to apply simplify recursively only once *)
@@ -210,14 +218,20 @@ let rec simplify_once expr =
     (Pow (a', b'))
 
   (* Recursively simplify unary functions *)
-  | Exp a -> (Exp (simplify_once a))
-  | Log a -> (Log (simplify_once a))
-  | Sin a -> (Sin (simplify_once a))
-  | Cos a -> (Cos (simplify_once a))
-
+  | Exp a -> Exp (simplify_once a)
+  | Log a -> Log (simplify_once a)
+  | Sin a -> Sin (simplify_once a)
+  | Cos a -> Cos (simplify_once a)
+  | Lazy f -> Lazy (fun () -> simplify_once (f ()))  (* Keep expression lazy while simplifying *)
 
 (* Simplifies expression by applying algebraic rules *)
 let simplify expr =
   let simplified = simplify_once expr in
   if expr =:= simplified then expr
   else simplify_once simplified
+
+
+(* Make expression lazy - use OCaml's built-in lazy type for memoization *)
+let lazy_expr f = 
+  let lazy_val = Lazy.from_fun f in
+  Lazy (fun () -> Lazy.force lazy_val)

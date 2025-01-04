@@ -192,6 +192,25 @@ let test_derivative () =
     ((fun () ->
         let expr = Var "x" *: Var "x" in
         nth_derivative expr "x" 3 =:= Float 0.));
+
+    (* Test lazy derivative evaluation *)
+    ((fun () ->
+        let counter = ref 0 in
+        let expensive_expr = lazy_expr (fun () -> 
+          incr counter;
+          Var "x" *: Var "x"  (* x^2 *)
+        ) in
+        let der = derivative expensive_expr "x" in
+        assert (!counter = 0); (* Should not be evaluated yet *)
+        
+        let env = [("x", 2.0)] in
+        let result = eval env der in
+        assert (!counter = 1);  (* Should be evaluated once *)
+        
+        let result2 = eval env der in
+        assert (!counter = 1);  (* Should still be evaluated only once *)
+        
+        result = 4.0 && result2 = 4.0));  (* d/dx(x^2) = 2x, at x=2 gives 4 *)
   ] in
 
   List.iter (fun test_fn ->
@@ -449,6 +468,40 @@ let test_bisection () =
   print_endline "✓ Bisection method tests completed!\n"
 
 
+let test_lazy_evaluation () =
+  print_endline "Testing lazy evaluation...";
+  let counter = ref 0 in
+
+  let expensive_computation x = 
+    incr counter;
+    x *: x +: x in
+
+  let test_cases = [
+    ((fun () ->
+      counter := 0;
+      let expr = lazy_expr (fun () -> expensive_computation (Float 3.0)) in
+      let result1 = eval [] expr in
+      let result2 = eval [] expr in
+      result1 = 12.0 && result2 = 12.0 && !counter = 1));  (* Should be computed only once *)
+
+    ((fun () ->
+      counter := 0;
+      let expr = lazy_expr (fun () -> expensive_computation (Var "x")) in
+      let result1 = eval [("x", 2.0)] expr in
+      let result2 = eval [("x", 3.0)] expr in  (* Different x value *)
+      result1 = 6.0 && result2 = 12.0 && !counter = 1));  (* Should be computed once *)
+  ] in
+
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());
+    with Assert_failure _ ->
+      print_endline "Failed\n"
+  ) test_cases;
+
+  print_endline "✓ Lazy evaluation tests completed!\n"
+
+
 (* Run all tests *)
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
@@ -463,6 +516,7 @@ let run_tests () =
   test_solve_gradient_descent ();
   test_newton ();
   test_bisection ();
+  test_lazy_evaluation ();
   print_endline "All tests completed successfully! ✓\n";;
 
 

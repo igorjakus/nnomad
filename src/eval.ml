@@ -28,6 +28,7 @@ let rec eval (env: env) (expr: expr): float =
   | Log a -> Float.log (eval env a)
   | Sin a -> Float.sin (eval env a)
   | Cos a -> Float.cos (eval env a)
+  | Lazy f -> eval env (f ()) (* Get the cached result *)
 
 
 (* Evaluates an expression at a specific value assuming it is single-var expr *)
@@ -44,6 +45,7 @@ let rec eval_at (value: float) (expr: expr): float =
   | Log a -> Float.log (eval_at value a)
   | Sin a -> Float.sin (eval_at value a)
   | Cos a -> Float.cos (eval_at value a)
+  | Lazy e -> eval_at value (e ())
 
 
 (* Evaluates a gradient given an environment mapping variables to values *)

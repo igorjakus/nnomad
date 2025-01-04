@@ -16,9 +16,11 @@ val solve_newton :
   max_iter:int ->
   (float, optim_error) result
 
-val newton_raphson_multivar :
+val newton_multivariable :
   f:Expr.expr ->
-  initial_guess:Eval.env ->
+  grad:Expr.gradient ->
+  env:Eval.env ->
+  iter:int ->
   tol:float ->
   max_iter:int ->
   (Eval.env, optim_error) result

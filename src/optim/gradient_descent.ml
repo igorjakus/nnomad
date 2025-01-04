@@ -38,7 +38,7 @@ let gradient_descent ~expr ~env ~learning_rate ~max_iter =
 
 
 (* Solve an equation using gradient descent *)
-let solve_gd ((lhs, rhs): equation) ~initial_guess ~learning_rate ~max_iter = 
+let solve_gradient_descent ((lhs, rhs): equation) ~initial_guess ~learning_rate ~max_iter = 
   let f = (lhs -: rhs) in
   let f_sq = simplify (f *: f) in 
   gradient_descent 

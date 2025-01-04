@@ -6,6 +6,7 @@ open Optimization_types
 
 (* The Newton-Raphson method for solving a single-variable equation. *)
 let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
+  (* Validate input parameters *)
   (if max_iter <= 0 then
     Error (InvalidInput "max_iter must be positive")
    else Ok ()) >>= fun () ->
@@ -17,6 +18,7 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
   let fx  = eval_at x f in
   let f'x = eval_at x f' in
   
+  (* Check for convergence and division by zero *)
   (if iter >= max_iter then 
     Error NoConvergence
    else Ok ()) >>= fun () ->
@@ -47,9 +49,9 @@ let solve_newton ((lhs, rhs): equation) ~initial_guess ~max_iter =
     ~tol:1e-6
     ~max_iter
 
-
 (* The multivariate Newton-Raphson method for a single equation f=0 in multiple variables. *)
 let rec newton_multivariable ~f ~grad ~env ~iter ~tol ~max_iter =
+  (* Validate input parameters *)
   (if max_iter <= 0 then
     Error (InvalidInput "max_iter must be positive")
    else Ok ()) >>= fun () ->
@@ -106,4 +108,3 @@ let solve_newton_multivar ((lhs, rhs): equation) ~initial_guess ~max_iter =
     ~iter:0
     ~tol:1e-6
     ~max_iter
-

@@ -284,6 +284,42 @@ let test_gradient_descent () =
   print_endline "✓ Gradient descent tests completed!\n"
 
 
+let test_solve_gradient_descent () =
+  print_endline "Testing solve_gradient_descent...";
+
+  let test_cases = [
+    ((fun () ->
+        let eq = (Var "x" *: Var "x", Float 1.) in
+        let env = [("x", 0.1)] in
+        match solve_gradient_descent eq ~initial_guess:env ~learning_rate:0.1 ~max_iter:100 with
+        | Ok final_env -> abs_float (abs_float (get_value "x" final_env) -. 1.) < 0.1
+        | Error _ -> false));
+    
+    ((fun () ->
+        let eq = (Var "x" *: Var "x" +: Var "y" *: Var "y", Float 1.) in
+        let env = [("x", 1.0); ("y", 1.0)] in
+        match solve_gradient_descent eq ~initial_guess:env ~learning_rate:0.1 ~max_iter:1000 with
+        | Ok final_env -> abs_float (eval final_env (fst eq -: snd eq)) < 0.1
+        | Error _ -> false));
+
+    ((fun () ->
+        let eq = (Pow(Var "x" -: Float 1., Float 2.) +: Pow(Var "y" +: Float 2., Float 2.), Float 0.) in
+        let env = [("x", 0.1); ("y", -0.2)] in
+        match solve_gradient_descent eq ~initial_guess:env ~learning_rate:0.1 ~max_iter:1000 with
+        | Ok final_env -> abs_float (eval final_env (fst eq -: snd eq)) < 0.01
+        | Error _ -> false));
+  ] in
+
+  List.iter (fun test_fn ->
+    try
+      assert (test_fn ());   
+    with Assert_failure _ ->
+      print_endline "Failed\n"
+  ) test_cases;
+  
+  print_endline "✓ solve_gradient_descent tests completed!\n"
+
+
 let test_newton () =
   print_endline "Testing Newton-Raphson solver...";
 
@@ -424,6 +460,7 @@ let run_tests () =
   test_derivative ();
   test_gradient ();
   test_gradient_descent ();
+  test_solve_gradient_descent ();
   test_newton ();
   test_bisection ();
   print_endline "All tests completed successfully! ✓\n";;

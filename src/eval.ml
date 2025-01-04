@@ -49,3 +49,12 @@ let rec eval_at (value: float) (expr: expr): float =
 (* Evaluates a gradient given an environment mapping variables to values *)
 let eval_grad (env: env) (gradient: gradient) =
   List.map (fun (var, expr) -> (var, eval env expr)) gradient
+
+
+(* Print the environment *)
+let print_env env =
+  print_string "[";
+  List.iter (fun (var, value) ->
+    Printf.printf "(%s, %f); " var value
+  ) env;
+  print_endline "]"

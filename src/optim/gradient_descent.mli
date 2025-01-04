@@ -7,7 +7,7 @@ val gradient_descent :
   max_iter:int ->
   (Eval.env, optim_error) result
 
-val solve_gd :
+val solve_gradient_descent :
   Expr.equation ->
   initial_guess:Eval.env ->
   learning_rate:float ->

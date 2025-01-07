@@ -1,12 +1,12 @@
 opam-version: "2.0"
-name: "nnomad"
+name: "nomad"
 version: "~dev"
 synopsis: "Numerical optimization, mathematics and automatic differentiation library"
 maintainer: "Igor Jakus <igorjakus@protonmail.com>"
 authors: ["Igor Jakus"]
 license: "MIT"
-homepage: "https://github.com/igorjakus/nnomad"
-bug-reports: "https://github.com/igorjakus/nnomad/issues"
+homepage: "https://github.com/igorjakus/nomad"
+bug-reports: "https://github.com/igorjakus/nomad/issues"
 depends: [
   "ocaml" {>= "5.2.1"}
   "dune" {>= "3.17.0"}

@@ -1,9 +1,9 @@
-open Nnomad.Expr
-open Nnomad.Eval
-open Nnomad.Derivatives
-open Nnomad.Gradient_descent
-open Nnomad.Newton
-open Nnomad.Bisection
+open Nomad.Expr
+open Nomad.Eval
+open Nomad.Derivatives
+open Nomad.Gradient_descent
+open Nomad.Newton
+open Nomad.Bisection
 
 
 let test_env () =

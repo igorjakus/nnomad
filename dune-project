@@ -1,9 +1,9 @@
 (lang dune 3.17)
 
-(name nnomad)
+(name nomad)
 
 (source
- (github igorjakus/nnomad))
+ (github igorjakus/nomad))
 
 (authors "Igor Jakus <igorjakus@protonmail.com>")
 (maintainers "Igor Jakus <igorjakus@protonmail.com>")

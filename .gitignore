@@ -5,3 +5,5 @@ _build/
 ideas.txt
 .DS_Store
 trash/
+prezentacja nomad.key
+.ipynb_checkpoints/

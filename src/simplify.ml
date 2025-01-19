@@ -80,14 +80,26 @@ let combine_like_factors terms =
    - Handles special cases (0, 1) *)
 let collect = function
   | Sum es ->
-      let sorted = List.sort expr_compare es in
+      let rec flatten_sum = function
+        | Sum xs :: rest -> flatten_sum (xs @ rest)
+        | x :: rest -> x :: flatten_sum rest
+        | [] -> []
+      in
+      let flattened = flatten_sum es in
+      let sorted = List.sort expr_compare flattened in
       Sum (combine_like_terms sorted)
       
   | Product es ->
       if List.exists ((=) (Float 0.)) es then 
         Float 0.
       else
-        let sorted = List.sort expr_compare es in
+        let rec flatten_product = function
+          | Product xs :: rest -> flatten_product (xs @ rest)
+          | x :: rest -> x :: flatten_product rest
+          | [] -> []
+        in
+        let flattened = flatten_product es in
+        let sorted = List.sort expr_compare flattened in
         Product (combine_like_factors sorted)
         
   | e -> e
@@ -110,8 +122,8 @@ let rec simplify_once expr =
   | Log (Exp x) | Exp (Log x) -> x
   | Neg (Neg x)               -> x
   | Sum     (x :: [])         -> x
-  | Product (x :: [])         -> x 
-  
+  | Product (x :: [])         -> x
+
   (* Constant folding *)
   | Sum     (Float a :: Float b :: xs) -> Sum     (Float (a +. b) :: xs) 
   | Product (Float a :: Float b :: xs) -> Product (Float (a *. b) :: xs)
@@ -126,10 +138,6 @@ let rec simplify_once expr =
   | Product (Float 0. :: _) -> Float 0.
   | Sum     [] -> Float 0.
   | Product [] -> Float 1.
-
-  (* TODO: *)
-  (* Suma w sumie rowna sie rozszerzona suma *)
-  (* Iloczyn w ilocznie rowna sie rozszerzony iloczyn *)
 
   (* Negation handling *)  
   | Neg (Product (x :: xs)) -> Product (Neg(x) :: xs)

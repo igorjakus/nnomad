@@ -32,17 +32,9 @@ let rec (=:=) e1 e2 =
   | Float a, Float b -> abs_float (a -. b) < 1e-10
   | Var a,   Var b   -> a = b
   | Neg a,   Neg b   -> a =:= b
-  
-  | Sum [], Sum []
-  | Product [], Product [] -> true
-
-  | Sum [], Sum _ 
-  | Sum _,  Sum [] 
-  | Product [], Product _ 
-  | Product _, Product [] -> false
 
   | Sum     a1, Sum     a2 
-  | Product a1, Product a2 -> List.for_all2 (=:=) a1 a2 (* FIXME: *)
+  | Product a1, Product a2 -> List.equal (=:=) a1 a2
 
   | Pow (a1, b1), Pow (a2, b2) -> a1 =:= a2 && b1 =:= b2
 
@@ -65,7 +57,8 @@ let rec (=:=) e1 e2 =
       | Cos _     -> 12
       | Log _     -> 14  (* Then other functions *)
       | Exp _     -> 16
-      | Neg e     -> expr_category e + 1  (* Negation in between *)
+      | Neg e     -> expr_category e - 1  (* Negation in between *)
+      (* TODO: shouldn't pow be in between? Maybe all the functions? *)
     in
   
     let cat1 = expr_category e1 in
@@ -78,7 +71,7 @@ let rec (=:=) e1 e2 =
       
       (* Sum and product comparison *)
       | Sum es1, Sum es2 
-      | Product es1, Product es2 -> (* TODO: watchout for infinite recursion *)
+      | Product es1, Product es2 ->
         let sorted1 = List.sort expr_compare es1 in
         let sorted2 = List.sort expr_compare es2 in
         List.compare expr_compare sorted1 sorted2

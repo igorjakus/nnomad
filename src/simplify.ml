@@ -109,6 +109,8 @@ let rec simplify_once expr =
   | Pow (x, Float 1.)         -> x
   | Log (Exp x) | Exp (Log x) -> x
   | Neg (Neg x)               -> x
+  | Sum     (x :: [])         -> x
+  | Product (x :: [])         -> x 
   
   (* Constant folding *)
   | Sum     (Float a :: Float b :: xs) -> Sum     (Float (a +. b) :: xs) 
@@ -131,19 +133,13 @@ let rec simplify_once expr =
 
   (* Negation handling *)  
   | Neg (Product (x :: xs)) -> Product (Neg(x) :: xs)
-  | Neg (Pow (x, Float n)) when mod_float n 2. = 0. -> Pow (x, Float n)
-  | Neg (Pow (x, Float n)) -> Pow (Neg x, Float n)
-  (* | Neg (Sum es) ->
-    Sum (List.map (fun e -> match e with
-    | Neg x -> x  (* --x -> x *)
-    | _ -> Neg e) es)
-    |> collect *)
+  | Neg (Sum xs) -> Sum (List.map (fun e -> Neg e) xs)
+  | Neg (Pow (x, Float n)) when mod_float n 2. <> 0. -> Pow (Neg x, Float n)
 
   (* Algebraic simplifications *)
   | Sum [x; y] when x =:= y -> (Float 2. *: x)
   | Product [Pow (x, n); y] when x =:= y -> Pow (x, n +: Float 1.)
   | Sum (Log x :: Log y :: xs) -> Sum (Log (x *: y) :: xs)
-  
 
   (* Trigonometric simplifications *)
   | Pow (Sin x, Float 2.) -> 

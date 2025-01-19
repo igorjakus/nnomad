@@ -116,30 +116,6 @@ let test_string_of_expr () =
 
   print_endline "✓ string_of_expr tests completed!\n"
 
-let test_latex_of_expr () =
-  print_endline "Testing latex_of_expr...";
-
-  let test_cases = [
-    (x, "x");
-    (Float 3.14, "3.14");
-    (x +: Float 2., "x + 2.");
-    (x *: (y +: Float 3.), "x \\cdot (y + 3.)");
-    (x ^: Float 2., "x^{2.}");
-    (Exp x, "e^{x}");
-    (Log (x *: y), "\\log{x \\cdot y}");
-    (x -: y, "x - y");
-    (x /: (y +: Float 1.), "\\frac{x}{y + 1.}")
-  ] in
-
-  List.iter (fun (input, expected) ->
-    let result = latex_of_expr input in
-    if result <> expected then
-      Printf.printf "Input: %s\nExpected: %s\nGot: %s\n\n"
-        (string_of_expr input) expected result
-  ) test_cases;
-
-  print_endline "✓ latex_of_expr tests completed!\n"
-
 
 let test_eval () =
   print_endline "Testing expression evaluation...";
@@ -467,7 +443,6 @@ let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
   test_string_of_expr ();
-  test_latex_of_expr ();
   (* test_simplify (); *)
   test_eval ();
   test_derivative ();

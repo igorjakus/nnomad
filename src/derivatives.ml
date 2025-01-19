@@ -1,7 +1,9 @@
 open Expr
+open Simplify
+
 
 (* Computes the derivative of an expression with respect to a variable *)
-let rec derivative expr var =
+let rec derivative expr var = (* TODO: swap order of arguments *)
   match expr with
   (* Base cases *)
   | Float _ -> 
@@ -12,16 +14,19 @@ let rec derivative expr var =
       Float 0.
 
   (* Basic arithmetic operations *)
-  | Add (f, g) -> 
-      simplify (derivative f var +: derivative g var)
-  | Sub (f, g) -> 
-      simplify (derivative f var -: derivative g var)
-  | Mult (f, g) -> 
-      simplify ((derivative f var *: g) +: (f *: derivative g var))
-  | Div (f, g) ->
-      let num = (derivative f var *: g) -: (f *: derivative g var) in
-      let den = g *: g in
-      simplify (num /: den)
+  | Neg f -> 
+      simplify (Neg (derivative f var))
+  | Sum fs -> 
+      simplify (Sum (List.map (fun e -> derivative e var) fs))
+  | Product fs -> 
+      let fs' = List.mapi (fun i e -> 
+        let rest = List.filter (fun _ -> true) fs in
+        let rest' = List.mapi (fun j f -> 
+          if i = j then derivative e var else f
+        ) rest in
+        Product rest'
+      ) fs in
+      simplify (Sum fs')
 
   (* Power rules *)
   | Pow (Var x, Float n) -> 
@@ -40,9 +45,6 @@ let rec derivative expr var =
       simplify (Cos f *: derivative f var)
   | Cos f -> 
       simplify (Float (-1.) *: Sin f *: derivative f var)
-
-  (* Preserve laziness in derivatives *)
-  | Lazy f -> lazy_expr (fun () -> derivative (f ()) var)
 
 
 (* Compute gradient as partial derivatives with respect to all variables *)

@@ -1,4 +1,5 @@
 open Expr
+open Simplify
 open Eval
 open Derivatives
 open Optimization_types

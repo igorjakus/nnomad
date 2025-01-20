@@ -21,7 +21,7 @@ let combine_like_terms terms =
     | [] -> []
     | [x] -> [x]
     | t1 :: t2 :: rest ->
-        match t1, t2 with
+        begin match t1, t2 with
         (* Handle constant combinations *)
         | Float n1, Float n2 -> 
             Float (n1 +. n2) :: combine rest
@@ -40,7 +40,8 @@ let combine_like_terms terms =
         | x, Neg y -> 
             x :: Neg y :: combine rest  (* Keep negation explicit *)
         | x, y -> 
-            x :: combine ( y:: rest)
+            x :: combine ( y :: rest)
+        end
   in
   combine terms
 
@@ -55,7 +56,7 @@ let combine_like_factors terms =
     | [x] -> [x]
     | Float 0. :: _ -> [Float 0.]
     | t1 :: t2 :: rest ->
-        match t1, t2 with
+        begin match t1, t2 with
         (* Handle constant combinations *)
         | Float n1, Float n2 -> 
             Float (n1 *. n2) :: combine rest
@@ -70,18 +71,19 @@ let combine_like_factors terms =
             
         (* Keep first term and continue *)
         | x, _ -> x :: combine (t2 :: rest)
+        end 
   in
   combine terms
 
 
 (* Main collection function that handles Sum and Product
    - Sorts terms using expr_compare
-   - Combines like terms
-   - Handles special cases (0, 1) *)
+   - Combines like terms *)
 let collect = function
   | Sum es ->
       let rec flatten_sum = function
-        | Sum xs :: rest -> flatten_sum (xs @ rest)
+        | Sum [x] :: rest -> x :: flatten_sum rest
+        | Sum (x :: xs) :: rest -> x :: flatten_sum (Sum xs :: rest)
         | x :: rest -> x :: flatten_sum rest
         | [] -> []
       in
@@ -90,19 +92,17 @@ let collect = function
       Sum (combine_like_terms sorted)
       
   | Product es ->
-      if List.exists ((=) (Float 0.)) es then 
-        Float 0.
-      else
-        let rec flatten_product = function
-          | Product xs :: rest -> flatten_product (xs @ rest)
-          | x :: rest -> x :: flatten_product rest
-          | [] -> []
-        in
-        let flattened = flatten_product es in
-        let sorted = List.sort expr_compare flattened in
-        Product (combine_like_factors sorted)
-        
-  | e -> e
+      let rec flatten_product = function
+        | Product [x] :: rest -> x :: flatten_product rest
+        | Product (x :: xs) :: rest -> x :: flatten_product (Product xs :: rest)
+        | x :: rest -> x :: flatten_product rest
+        | [] -> []
+      in
+      let flattened = flatten_product es in
+      let sorted = List.sort expr_compare flattened in
+      Product (combine_like_factors sorted)
+
+  | _ -> failwith "improper use of collect"
 
 
 (* Helper function to apply simplify recursively only once *)
@@ -148,12 +148,6 @@ let rec simplify_once expr =
   | Sum [x; y] when x =:= y -> (Float 2. *: x)
   | Product [Pow (x, n); y] when x =:= y -> Pow (x, n +: Float 1.)
   | Sum (Log x :: Log y :: xs) -> Sum (Log (x *: y) :: xs)
-
-  (* Trigonometric simplifications *)
-  | Pow (Sin x, Float 2.) -> 
-      Sum [Float 1.; Product [Float (-1.); Pow (Cos x, Float 2.)]]
-  | Pow (Cos x, Float 2.) -> 
-      Sum [Float 1.; Product [Float (-1.); Pow (Sin x, Float 2.)]]
 
   (* Recursive simplification and collection *)
   | Exp a -> Exp (simplify_once a)

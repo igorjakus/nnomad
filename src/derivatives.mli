@@ -1,3 +1,3 @@
-val derivative : Expr.expr -> string -> Expr.expr
+val derivative : string -> Expr.expr -> Expr.expr
 val gradient : Expr.expr -> Expr.gradient
-val nth_derivative : Expr.expr -> string -> int -> Expr.expr
+val nth_derivative : string -> int -> Expr.expr -> Expr.expr

@@ -154,33 +154,33 @@ let test_derivative () =
   let test_cases = [
     ((fun () ->
         let expr = x *: x in
-        derivative expr "x" =:= (Float 2. *: x)));
+        derivative "x" expr =:= (Float 2. *: x)));
     
     ((fun () ->
         let expr = Sin x in
-        derivative expr "x" =:= Cos x));
+        derivative "x" expr =:= Cos x));
     
     ((fun () ->
         let expr = Exp (x *: x) in
-        let der = derivative expr "x" in
+        let der = derivative "x" expr in
         simplify der =:= (Exp (x *: x) *: (Float 2. *: x))));
     
     ((fun () ->
         let expr = x ^: Float 3. in
-        derivative expr "x" =:= (Float 3. *: (x ^: Float 2.))));
+        derivative "x" expr =:= (Float 3. *: (x ^: Float 2.))));
     
     ((fun () ->
         let expr = x *: Sin x in
-        let der = derivative expr "x" in
+        let der = derivative "x" expr in
         simplify der =:= (Sin x +: (x *: Cos x))));
     
     ((fun () ->
         let expr = x *: x in
-        nth_derivative expr "x" 2 =:= Float 2.));
+        nth_derivative "x" 2 expr =:= Float 2.));
     
     ((fun () ->
         let expr = x *: x in
-        nth_derivative expr "x" 3 =:= Float 0.));
+        nth_derivative "x" 3 expr =:= Float 0.));
   ] in
 
   List.iter (fun test_fn ->

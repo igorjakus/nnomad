@@ -1,6 +1,6 @@
 (library
  (public_name nomad)
  (name nomad)
- (modules expr simplify eval derivatives optimization_types gradient_descent newton bisection)
+ (modules expr constants simplify eval derivatives optimization_types gradient_descent newton bisection)
 )
 (include_subdirs unqualified)

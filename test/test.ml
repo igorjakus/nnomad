@@ -1,13 +1,11 @@
 open Nomad.Expr
+open Nomad.Constants
 open Nomad.Simplify
 open Nomad.Eval
 open Nomad.Derivatives
 open Nomad.Gradient_descent
 open Nomad.Newton
 open Nomad.Bisection
-
-let x = Var "x"
-let y = Var "y"
 
 
 let test_env () =
@@ -90,6 +88,9 @@ let test_simplify () =
     (* Combined simplifications *)
     (((x +: y) /: x) -: Float 1., y /: x);
     ((x *: y) /: (x *: (y +: Float 1.)), y /: (y +: Float 1.));
+
+    (* Subtraction simplifications *)
+    (Sin x -: Sin x, Float 0.);
   ] in
 
   List.iter (fun (input, expected) ->
@@ -179,30 +180,30 @@ let test_derivative () =
     (x *: Sin x, "x", Sin x +: (x *: Cos x));
     ((x +: y) *: Sin x, "x", (x +: y) *: Cos x +: Sin x);
     (Log x, "x", Float 1. /: x);
-    
+
     (* Zero derivatives (with respect to x) *)
     (y ^: Float 3., "x", Float 0.);
     (Sin y, "x", Float 0.);
     (Exp y, "x", Float 0.);
     (y *: y, "x", Float 0.);
-    
+
     (* Mixed expressions *)
     (x *: (y ^: Float 2.), "x", y ^: Float 2.);
     ((x +: y) ^: Float 3., "x", Float 3. *: ((x +: y) ^: Float 2.));
     (Sin (x *: y), "x", y *: Cos (x *: y));
-    
+
     (* Complex expressions *)
     (Exp (x *: y) *: Sin (x +: y), "x", 
      (y *: Exp (x *: y) *: Sin (x +: y)) +: (Exp (x *: y) *: Cos (x +: y)));
-    
+
     (* Nested expressions *)
     ((x ^: Float 2.) *: Sin (y ^: Float 2.), "x", 
      Float 2. *: x *: Sin (y ^: Float 2.));
-    
+
     (* Logarithmic expressions *)
     (Log (x *: y), "x", Float 1. /: x);
     (Log (x ^: y), "x", y /: x);
-    
+
     (* Quotient rule cases *)
     ((x ^: Float 2.) /: y, "x", Float 2. *: x /: y);
     (x /: (y ^: Float 2.), "x", Float 1. /: (y ^: Float 2.));

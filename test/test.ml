@@ -55,6 +55,7 @@ let test_simplify () =
 
   let test_cases = [
     (* Basic algebraic simplifications *)
+    (* TODO: more test cases*)
     (x +: Float 0.,     x);
     (Float 0. *: x,     Float 0.);
     (x ^: Float 1.,     x);
@@ -104,7 +105,8 @@ let test_string_of_expr () =
     (Exp x, "exp(x)");
     (Log (x *: y), "log(x * y)");
     (x -: y, "x - y");
-    (x /: (y +: Float 1.), "x / (y + 1.)")
+    (x /: (y +: Float 1.), "x / (y + 1.)");
+    (Exp (Float 1.), "e")
   ] in
 
   List.iter (fun (input, expected) ->
@@ -176,6 +178,7 @@ let test_derivative () =
   
   print_endline "✓ Derivative tests completed!\n"
 
+
 let test_nth_derivative () =
   print_endline "Testing nth derivative computation...";
 
@@ -239,6 +242,7 @@ let test_eval_grad () =
   ) test_cases;
   
   print_endline "✓ Gradient evaluation tests completed!\n"
+
 
 let test_gradient () =
   print_endline "Testing gradient computation...";

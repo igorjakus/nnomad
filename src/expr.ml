@@ -171,6 +171,7 @@ let rec string_of_expr expr =
   | Neg (Product _ as x) -> 
       "-" ^ parenthesize 6 x string_of_expr
   | Neg x -> "-" ^ parenthesize 6 x string_of_expr
+  | Exp (Float 1.) -> "e"
   | Exp a -> "exp(" ^ string_of_expr a ^ ")"
   | Log a -> "log(" ^ string_of_expr a ^ ")"
   | Sin a -> "sin(" ^ string_of_expr a ^ ")"

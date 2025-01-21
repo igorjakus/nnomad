@@ -55,7 +55,6 @@ let test_simplify () =
 
   let test_cases = [
     (* Basic algebraic simplifications *)
-    (* TODO: more test cases*)
     (x +: Float 0.,     x);
     (Float 0. *: x,     Float 0.);
     (x ^: Float 1.,     x);
@@ -77,6 +76,20 @@ let test_simplify () =
     
     (* Trigonometric identities *)
     ((Sin x ^: Float 2.) +: (Cos x ^: Float 2.), Float 1.);
+    ((Sin y ^: Float 2.) +: (Cos y ^: Float 2.), Float 1.);
+
+    (* Division simplifications *)
+    (y /: (x /: y), y *: y /: x);
+    (x /: (y /: x), (x *: x) /: y);
+    ((x /: y) /: (y /: x), (x *: x) /: (y *: y));
+    
+    (* Mixed operations *)
+    ((x /: y) *: (y /: x), Float 1.);
+    ((x *: y) /: (y *: x), Float 1.);
+    
+    (* Combined simplifications *)
+    (((x +: y) /: x) -: Float 1., y /: x);
+    ((x *: y) /: (x *: (y +: Float 1.)), y /: (y +: Float 1.));
   ] in
 
   List.iter (fun (input, expected) ->
@@ -106,7 +119,11 @@ let test_string_of_expr () =
     (Log (x *: y), "log(x * y)");
     (x -: y, "x - y");
     (x /: (y +: Float 1.), "x / (y + 1.)");
-    (Exp (Float 1.), "e")
+    (Exp (Float 1.), "e");
+    (y /: (x /: y), "y / (x / y)");
+    (x /: (y /: x), "x / (y / x)");
+    ((x /: y) /: (y /: x), "(x / y) / (y / x)");
+    ((x *: y) /: (y *: x), "(x * y) / (y * x)");
   ] in
 
   List.iter (fun (input, expected) ->

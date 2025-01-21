@@ -1,6 +1,5 @@
 open Expr
 
-
 (* Checks if expression contains division by zero
    Returns true if expression contains:
    - negative power of 0 *)
@@ -132,6 +131,9 @@ let rec simplify_once expr =
   | Sum     (x :: [])         -> x
   | Product (x :: [])         -> x
 
+  (* Special cases for e *)
+  | Pow (Exp (Float 1.), n) -> Exp n
+
   (* Constant folding *)
   | Sum     (Float a :: Float b :: xs) -> Sum     (Float (a +. b) :: xs)
   | Product (Float a :: Float b :: xs) -> Product (Float (a *. b) :: xs)
@@ -147,8 +149,15 @@ let rec simplify_once expr =
   | Sum     [] -> Float 0.
   | Product [] -> Float 1.
 
+
+  (* Trigonometric identities *)
+  (* sin(π-x) = sin(x)   <=>  sin(π+x) = sin(-x)) *)
+  (* | Sin (Sum (pi :: xs)) when pi =:= Constants.pi -> 
+      Sin (Float (-.1.) *: Sum (xs)) *)
+  
+  (* sin^2(x) + cos^2(x) = 1 *)
   | Sum (Pow(Sin(x), Float 2.) :: Pow(Cos(y), Float 2.) :: xs) when x =:= y ->
-    Sum ((Float 1.) :: xs) (* sin^2(x) + cos^2(x) = 1 *)
+      Sum ((Float 1.) :: xs) 
 
   (* Negation handling *)  
   | Neg (Product (x :: xs)) -> Product (Neg(x) :: xs)

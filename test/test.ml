@@ -75,6 +75,7 @@ let test_simplify () =
     (* Trigonometric identities *)
     ((Sin x ^: Float 2.) +: (Cos x ^: Float 2.), Float 1.);
     ((Sin y ^: Float 2.) +: (Cos y ^: Float 2.), Float 1.);
+    (* (Sin (pi -: x), Sin x); *) (* sin(π-x) = sin(x) *)
 
     (* Division simplifications *)
     (y /: (x /: y), y *: y /: x);
@@ -91,6 +92,9 @@ let test_simplify () =
 
     (* Subtraction simplifications *)
     (Sin x -: Sin x, Float 0.);
+
+    (* Constants simplifications *)
+    (Exp (Float 1.) ^: x, Exp x);
   ] in
 
   List.iter (fun (input, expected) ->

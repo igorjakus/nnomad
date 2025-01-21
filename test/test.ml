@@ -205,43 +205,84 @@ let test_nth_derivative () =
   print_endline "✓ Nth derivative tests completed!\n"
 
 
+let test_eval_grad () =
+  print_endline "Testing gradient evaluation...";
+
+  let test_cases = [
+    ([("x", 1.0); ("y", 2.0)],
+     [("x", Float 2.); ("y", Float 4.)],
+     [("x", 2.0); ("y", 4.0)]);
+    
+    ([("x", 0.0); ("y", 0.0)],
+     [("x", Cos x); ("y", Neg (Sin x))],
+     [("x", 1.0); ("y", 0.0)]);
+    
+    ([("x", 2.0); ("y", 3.0)],
+     [("x", Float 1.0); ("y", Float (-1.0))],
+     [("x", 1.0); ("y", -1.0)]);
+    
+    ([("x", 1.0); ("y", 1.0)],
+     [("x", x); ("y", y)],
+     [("x", 1.0); ("y", 1.0)]);
+  ] in
+
+  List.iter (fun (env, grad, expected) ->
+    let result = eval_grad env grad in
+    try
+      assert (result = expected);
+    with Assert_failure _ ->
+      Printf.printf "Env: %s\nGrad: %s\nExpected: %s\nGot: %s\n\n"
+        (String.concat ", " (List.map (fun (v,n) -> v ^ "=" ^ string_of_float n) env))
+        (String.concat ", " (List.map (fun (v,e) -> v ^ "=" ^ string_of_expr e) grad))
+        (String.concat ", " (List.map (fun (v,n) -> v ^ "=" ^ string_of_float n) expected))
+        (String.concat ", " (List.map (fun (v,n) -> v ^ "=" ^ string_of_float n) result))
+  ) test_cases;
+  
+  print_endline "✓ Gradient evaluation tests completed!\n"
+
 let test_gradient () =
   print_endline "Testing gradient computation...";
 
   let test_cases = [
-    ((fun () ->
-        let expr = (x *: x) +: (y *: y) in
-        let grad = gradient expr in
-        let x_der = List.assoc "x" grad in
-        let y_der = List.assoc "y" grad in
-        x_der =:= (Float 2. *: x) && 
-        y_der =:= (Float 2. *: y)));
+    (* Basic expressions *)
+    (x *: x, [("x", Float 2. *: x)]);
+    (x +: y, [("x", Float 1.); ("y", Float 1.)]);
+    ((x *: x) +: (y *: y), [("x", Float 2. *: x); ("y", Float 2. *: y)]);
     
-    ((fun () ->
-        let expr = x *: x +: y *: y in
-        let env = [("x", 1.0); ("y", 2.0)] in
-        let grad = gradient expr in
-        let grad_values = eval_grad env grad in
-        List.assoc "x" grad_values = 2.0 && 
-        List.assoc "y" grad_values = 4.0));
+    (* Trigonometric expressions *)
+    (Sin x *: Cos y, [("x", Cos x *: Cos y); ("y", Neg(Sin x) *: Sin y)]);
+    (Sin (x *: y), [("x", y *: Cos (x *: y)); ("y", x *: Cos (x *: y))]);
     
-    ((fun () ->
-        let expr = Sin x *: Cos y in
-        let grad = gradient expr in
-        let env = [("x", 0.0); ("y", 0.0)] in
-        let grad_values = eval_grad env grad in
-        Float.abs(List.assoc "x" grad_values -. 1.0) < 1e-10 && 
-        Float.abs(List.assoc "y" grad_values -. 0.0) < 1e-10));
+    (* Exponential and logarithmic *)
+    (Exp (x +: y), [("x", Exp (x +: y)); ("y", Exp (x +: y))]);
+    (Log (x *: y), [("x", Float 1. /: x); ("y", Float 1. /: y)]);
+    
+    (* Complex expressions *)
+    ((x ^: Float 2.) *: Sin y, 
+     [("x", Float 2. *: x *: Sin y); 
+      ("y", (x ^: Float 2.) *: Cos y)]);
+    
+    (Exp (x *: y) +: Log (x +: y),
+     [("x", y *: Exp (x *: y) +: Float 1. /: (x +: y));
+      ("y", x *: Exp (x *: y) +: Float 1. /: (x +: y))]);
   ] in
 
-  List.iter (fun test_fn ->
+  List.iter (fun (expr, expected) ->
+    let result = gradient expr in
     try
-      assert (test_fn ());
+      List.iter2 
+        (fun (var1, expr1) (var2, expr2) ->
+           assert (var1 = var2 && simplify expr1 =:= simplify expr2))
+        (List.sort compare result)
+        (List.sort compare expected)
     with Assert_failure _ ->
-      print_endline "Failed\n"
+      Printf.printf "Expression: %s\nExpected gradient: %s\nGot: %s\n\n"
+        (string_of_expr expr)
+        (String.concat ", " (List.map (fun (v,e) -> v ^ "=" ^ string_of_expr e) expected))
+        (String.concat ", " (List.map (fun (v,e) -> v ^ "=" ^ string_of_expr e) result))
   ) test_cases;
   
-  print_endline "✓ Gradient tests completed!\n"
+  print_endline "✓ Gradient computation tests completed!\n"
 
 
 let test_gradient_descent () =
@@ -459,7 +500,8 @@ let run_tests () =
   test_eval ();
   test_derivative ();
   test_nth_derivative ();
-  test_gradient ();
+  test_eval_grad ();    (* Changed order *)
+  test_gradient ();     (* Changed order *)
   test_gradient_descent ();
   test_solve_gradient_descent ();
   test_newton ();

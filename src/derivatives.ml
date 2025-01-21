@@ -27,7 +27,7 @@ let rec derivative var = function
       simplify (f *: derivative var (Product fs) +: derivative var f *: Product fs)
 
   (* Power rules *)
-  | Pow (Var x, Float n) -> 
+  | Pow (Var x, Float n) when x = var -> 
       Float n *: (Var x ^: Float (n -. 1.))        (* Simple power rule *)
   | Pow (f, n) ->                                  (* General power rule *)
       let n' = n -: Float 1. in 

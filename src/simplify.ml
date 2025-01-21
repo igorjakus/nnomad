@@ -133,7 +133,7 @@ let rec simplify_once expr =
   | Product (x :: [])         -> x
 
   (* Constant folding *)
-  | Sum     (Float a :: Float b :: xs) -> Sum     (Float (a +. b) :: xs) 
+  | Sum     (Float a :: Float b :: xs) -> Sum     (Float (a +. b) :: xs)
   | Product (Float a :: Float b :: xs) -> Product (Float (a *. b) :: xs)
   
   | Pow (Float a, Float b) -> Float (a ** b)
@@ -147,15 +147,28 @@ let rec simplify_once expr =
   | Sum     [] -> Float 0.
   | Product [] -> Float 1.
 
+  | Sum (Pow(Sin(x), Float 2.) :: Pow(Cos(y), Float 2.) :: xs) when x =:= y ->
+    Sum ((Float 1.) :: xs) (* sin^2(x) + cos^2(x) = 1 *)
+
   (* Negation handling *)  
   | Neg (Product (x :: xs)) -> Product (Neg(x) :: xs)
   | Neg (Sum xs) -> Sum (List.map (fun e -> Neg e) xs)
   | Neg (Pow (x, Float n)) when mod_float n 2. <> 0. -> Pow (Neg x, Float n)
 
   (* Algebraic simplifications *)
-  | Sum [x; y] when x =:= y -> (Float 2. *: x)
-  | Product [Pow (x, n); y] when x =:= y -> Pow (x, n +: Float 1.)
-  | Sum (Log x :: Log y :: xs) -> Sum (Log (x *: y) :: xs)
+  | Sum [x; y] when x =:= y -> 
+      (Float 2. *: x)
+  | Product (Pow (x, n) :: Pow (y, m) :: xs) when x =:= y -> 
+      Product (Pow (x, n +: m) :: xs)
+  | Product (Pow (x, n) :: y :: xs) when x =:= y ->
+      Product (Pow (x, n +: Float 1.) :: xs)
+  | Sum (Log x :: Log y :: xs)     -> Sum (Log (x *: y) :: xs)
+  | Product (Exp x :: Exp y :: xs) -> Product (Exp (x +: y) :: xs)
+  | Pow (Exp x, y) -> Exp (x *: y)
+  | Pow (Pow (x, n), m) -> Pow (x, n *: m)
+
+  (* helpful for simplifying exprs like x*y^2 / (xy)^2*)
+  | Pow (Product xs, n) -> Product (List.map (fun x -> Pow (x, n)) xs)
 
   (* Recursive simplification and collection *)
   | Exp a -> Exp (simplify_once a)

@@ -50,7 +50,7 @@ let test_env () =
   print_endline "✓ Environment tests completed!\n"
 
 
-(* let test_simplify () =
+let test_simplify () =
   print_endline "Testing expression simplification...";
 
   let test_cases = [
@@ -63,7 +63,7 @@ let test_env () =
     (Exp (Log x),       x);
     
     (* More complex simplifications *)
-    (x -: Float (-2.),                   x +: Float 2.);
+    (x -: Float (-2.),                   Float 2. +: x);
     ((x +: Float 0.) *: (Float 1. *: y), x *: y);
     (x *: (x ^: Float 2.),               x ^: Float 3.);
     (Log x +: Log y,                     Log (x *: y));
@@ -90,7 +90,7 @@ let test_env () =
   ) test_cases;
   
   print_endline "✓ Simplification tests completed!\n"
-*)
+
 
 let test_string_of_expr () =
   print_endline "Testing string_of_expr...";
@@ -443,7 +443,7 @@ let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
   test_string_of_expr ();
-  (* test_simplify (); *)
+  test_simplify ();
   test_eval ();
   test_derivative ();
   test_gradient ();

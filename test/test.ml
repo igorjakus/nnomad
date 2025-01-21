@@ -2,9 +2,9 @@ open Nomad.Expr
 open Nomad.Simplify
 open Nomad.Eval
 open Nomad.Derivatives
-(* open Nomad.Gradient_descent
+open Nomad.Gradient_descent
 open Nomad.Newton
-open Nomad.Bisection *)
+open Nomad.Bisection
 
 let x = Var "x"
 let y = Var "y"
@@ -243,7 +243,7 @@ let test_gradient () =
   
   print_endline "✓ Gradient tests completed!\n"
 
-(*
+
 let test_gradient_descent () =
   print_endline "Testing gradient descent optimization...";
 
@@ -448,7 +448,7 @@ let test_bisection () =
   ) test_cases;
   
   print_endline "✓ Bisection method tests completed!\n"
-*)
+
 
 (* Run all tests *)
 let run_tests () =
@@ -460,10 +460,10 @@ let run_tests () =
   test_derivative ();
   test_nth_derivative ();
   test_gradient ();
-  (* test_gradient_descent (); *)
-  (* test_solve_gradient_descent (); *)
-  (* test_newton (); *)
-  (* test_bisection (); *)
+  test_gradient_descent ();
+  test_solve_gradient_descent ();
+  test_newton ();
+  test_bisection ();
   print_endline "All tests completed successfully! ✓\n";;
 
 

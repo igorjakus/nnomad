@@ -82,25 +82,33 @@ let combine_like_factors terms =
 let collect = function
   | Sum es ->
       let rec flatten_sum = function
-        | Sum [x] :: rest -> x :: flatten_sum rest
-        | Sum (x :: xs) :: rest -> x :: flatten_sum (Sum xs :: rest)
+        | Sum es :: rest -> List.append es (flatten_sum rest)
         | x :: rest -> x :: flatten_sum rest
         | [] -> []
       in
       let flattened = flatten_sum es in
       let sorted = List.sort expr_compare flattened in
-      Sum (combine_like_terms sorted)
+      let combined = combine_like_terms sorted in
+      begin match combined with
+      | [] -> Float 0.  (* Handle empty sum *)
+      | [x] -> x        (* Simplify single term *)
+      | xs -> Sum xs    (* Keep multiple terms *)
+      end
       
   | Product es ->
       let rec flatten_product = function
-        | Product [x] :: rest -> x :: flatten_product rest
-        | Product (x :: xs) :: rest -> x :: flatten_product (Product xs :: rest)
+        | Product es :: rest -> List.append es (flatten_product rest)
         | x :: rest -> x :: flatten_product rest
         | [] -> []
       in
       let flattened = flatten_product es in
       let sorted = List.sort expr_compare flattened in
-      Product (combine_like_factors sorted)
+      let combined = combine_like_factors sorted in
+      begin match combined with
+      | [] -> Float 1.     (* Handle empty product *)
+      | [x] -> x           (* Simplify single term *)
+      | xs -> Product xs   (* Keep multiple terms *)
+      end
 
   | _ -> failwith "improper use of collect"
 

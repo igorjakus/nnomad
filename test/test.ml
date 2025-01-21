@@ -1,9 +1,13 @@
 open Nomad.Expr
+open Nomad.Simplify
 open Nomad.Eval
 open Nomad.Derivatives
 open Nomad.Gradient_descent
 open Nomad.Newton
 open Nomad.Bisection
+
+let x = Var "x"
+let y = Var "y"
 
 
 let test_env () =
@@ -12,13 +16,13 @@ let test_env () =
   let test_cases = [  
     (fun () ->
        let env = [("x", 2.0); ("y", 3.0)] in
-       let expr = Var "x" +: Var "y" in
+       let expr = x +: y in
        eval env expr = 5.0);
 
     (fun () ->
        let env = [("x", 2.0); ("y", 3.0)] in
        let env = update_env env [("x", 1.0)] in
-       let expr = Var "x" +: Var "y" in
+       let expr = x +: y in
        eval env expr = 4.0);
 
     (fun () ->
@@ -29,13 +33,13 @@ let test_env () =
     (fun () ->
        let env = [("x", 2.0)] in
        let env = update_env env [("y", 3.0)] in
-       let expr = Var "x" +: Var "y" in
+       let expr = x +: y in
        eval env expr = 5.0);
 
     (fun () ->
        let env = [("x", 2.0); ("y", 3.0)] in
        let env = update_env env [("x", 4.0); ("y", 1.0)] in
-       let expr = Var "x" *: Var "y" in
+       let expr = x *: y in
        eval env expr = 4.0);
   ] in
 
@@ -50,18 +54,28 @@ let test_simplify () =
   print_endline "Testing expression simplification...";
 
   let test_cases = [
-    ((Var "x" +: Float 0., Var "x"));
-    ((Float 0. *: Var "x", Float 0.));
-    ((Var "x" ^: Float 1., Var "x"));
-    ((Var "x" +: Var "x", Float 2. *: Var "x"));
-    ((Log (Exp (Var "x")), Var "x"));
-    ((Exp (Log (Var "x")), Var "x"));
-    ((Sub (Var "x", Float (-2.)), Add (Var "x", Float 2.)));
-    (((Var "x" +: Float 0.) *: (Float 1. *: Var "y"), Mult (Var "x", Var "y")));
-    ((Mult (Var "x", Pow (Var "x", Float 2.)), Pow (Var "x", Float 3.)));
-    ((Log(Var "x") +: Log(Var "y"), Log(Var "x" *: Var "y")));
-    ((Div (Pow (Var "x", Float 3.), Pow (Var "x", Float 2.)), Var "x"));
-    ((Div (Mult (Var "x", Pow (Var "y", Float 2.)), Var "y" *: Var "x"), Var "y"));
+    (* Basic algebraic simplifications *)
+    (x +: Float 0.,     x);
+    (Float 0. *: x,     Float 0.);
+    (x ^: Float 1.,     x);
+    (x +: x,            Float 2. *: x);
+    (Log (Exp x),       x);
+    (Exp (Log x),       x);
+    
+    (* More complex simplifications *)
+    (x -: Float (-2.),                   Float 2. +: x);
+    ((x +: Float 0.) *: (Float 1. *: y), x *: y);
+    (x *: (x ^: Float 2.),               x ^: Float 3.);
+    (Log x +: Log y,                     Log (x *: y));
+    ((x ^: Float 3.) /: (x ^: Float 2.), x);
+    ((x *: (y ^: Float 2.)) /: (y *: x), y);
+
+    (* Negation handling *)
+    (Neg (Neg x),       x);
+    (Neg (x +: y),      Neg x -: y);
+    
+    (* Trigonometric identities *)
+    ((Sin x ^: Float 2.) +: (Cos x ^: Float 2.), Float 1.);
   ] in
 
   List.iter (fun (input, expected) ->
@@ -82,15 +96,15 @@ let test_string_of_expr () =
   print_endline "Testing string_of_expr...";
 
   let test_cases = [
-    (Var "x", "x");
+    (x, "x");
     (Float 3.14, "3.14");
-    (Add (Var "x", Float 2.), "x + 2.");
-    (Mult (Var "x", Add (Var "y", Float 3.)), "x * (y + 3.)");
-    (Pow (Var "x", Float 2.), "x^2.");
-    (Exp (Var "x"), "exp(x)");
-    (Log (Mult (Var "x", Var "y")), "log(x * y)");
-    (Sub (Var "x", Var "y"), "x - y");
-    (Div (Var "x", Add (Var "y", Float 1.)), "x / (y + 1.)")
+    (x +: Float 2., "x + 2.");
+    (x *: (y +: Float 3.), "x * (y + 3.)");
+    (x ^: Float 2., "x^2.");
+    (Exp x, "exp(x)");
+    (Log (x *: y), "log(x * y)");
+    (x -: y, "x - y");
+    (x /: (y +: Float 1.), "x / (y + 1.)")
   ] in
 
   List.iter (fun (input, expected) ->
@@ -103,49 +117,24 @@ let test_string_of_expr () =
   print_endline "✓ string_of_expr tests completed!\n"
 
 
-let test_latex_of_expr () =
-  print_endline "Testing latex_of_expr...";
-
-  let test_cases = [
-    (Var "x", "x");
-    (Float 3.14, "3.14");
-    (Add (Var "x", Float 2.), "x + 2.");
-    (Mult (Var "x", Add (Var "y", Float 3.)), "x \\cdot (y + 3.)");
-    (Pow (Var "x", Float 2.), "x^{2.}");
-    (Exp (Var "x"), "e^{x}");
-    (Log (Mult (Var "x", Var "y")), "\\log{x \\cdot y}");
-    (Sub (Var "x", Var "y"), "x - y");
-    (Div (Var "x", Add (Var "y", Float 1.)), "\\frac{x}{y + 1.}")
-  ] in
-
-  List.iter (fun (input, expected) ->
-    let result = latex_of_expr input in
-    if result <> expected then
-      Printf.printf "Input: %s\nExpected: %s\nGot: %s\n\n"
-        (string_of_expr input) expected result
-  ) test_cases;
-
-  print_endline "✓ latex_of_expr tests completed!\n"
-
-
 let test_eval () =
   print_endline "Testing expression evaluation...";
 
   let env = [("x", 2.0); ("y", 3.0)] in
   let test_cases = [
-    ((Var "x" +: Var "y", 5.0));
-    ((Var "x" *: Var "y", 6.0));
-    ((Var "x" -: Var "y", -1.0));
-    ((Var "x" /: Var "y", 2.0 /. 3.0));
-    ((Exp (Var "x"), exp 2.0));
-    ((Log (Var "y"), log 3.0));
-    ((Sin (Var "x"), sin 2.0));
-    ((Cos (Var "x"), cos 2.0));
-    ((Sin(Var "x") *: Cos(Var "y"), sin(2.0) *. cos(3.0)));
-    ((Sin(Var "x") *: Cos(Var "y") +: Exp(Var "x" /: Var "y"),
-      sin(2.0) *. cos(3.0) +. exp(2.0/.3.0)));
-    ((Pow(Var "x", Float 3.) +: Pow(Var "y", Float 2.),
-      8.0 +. 9.0));
+    (x +: y, 5.0);
+    (x *: y, 6.0);
+    (x -: y, -1.0);
+    (x /: y, 2.0 /. 3.0);
+    (Exp x, exp 2.0);
+    (Log y, log 3.0);
+    (Sin x, sin 2.0);
+    (Cos x, cos 2.0);
+    (Sin x *: Cos y, sin(2.0) *. cos(3.0));
+    (Sin x *: Cos y +: Exp(x /: y),
+      sin(2.0) *. cos(3.0) +. exp(2.0/.3.0));
+    ((x ^: Float 3.) +: (y ^: Float 2.),
+      8.0 +. 9.0);
   ] in
 
   List.iter (fun (expr, expected) ->
@@ -163,64 +152,57 @@ let test_derivative () =
   print_endline "Testing derivative computation...";
 
   let test_cases = [
-    ((fun () ->
-        let expr = Var "x" *: Var "x" in
-        derivative expr "x" =:= (Float 2. *: Var "x")));
-    
-    ((fun () ->
-        let expr = Sin (Var "x") in
-        derivative expr "x" =:= Cos (Var "x")));
-    
-    ((fun () ->
-        let expr = Exp (Var "x" *: Var "x") in
-        let der = derivative expr "x" in
-        simplify der =:= (Exp (Var "x" *: Var "x") *: (Float 2. *: Var "x"))));
-    
-    ((fun () ->
-        let expr = Pow (Var "x", Float 3.) in
-        derivative expr "x" =:= (Float 3. *: Pow (Var "x", Float 2.))));
-    
-    ((fun () ->
-        let expr = Var "x" *: Sin (Var "x") in
-        let der = derivative expr "x" in
-        simplify der =:= (Sin (Var "x") +: (Var "x" *: Cos (Var "x")))));
-    
-    ((fun () ->
-        let expr = Var "x" *: Var "x" in
-        nth_derivative expr "x" 2 =:= Float 2.));
-    
-    ((fun () ->
-        let expr = Var "x" *: Var "x" in
-        nth_derivative expr "x" 3 =:= Float 0.));
-
-    (* Test lazy derivative evaluation *)
-    ((fun () ->
-        let counter = ref 0 in
-        let expensive_expr = lazy_expr (fun () -> 
-          incr counter;
-          Var "x" *: Var "x"  (* x^2 *)
-        ) in
-        let der = derivative expensive_expr "x" in
-        assert (!counter = 0); (* Should not be evaluated yet *)
-        
-        let env = [("x", 2.0)] in
-        let result = eval env der in
-        assert (!counter = 1);  (* Should be evaluated once *)
-        
-        let result2 = eval env der in
-        assert (!counter = 1);  (* Should still be evaluated only once *)
-        
-        result = 4.0 && result2 = 4.0));  (* d/dx(x^2) = 2x, at x=2 gives 4 *)
+    (* Basic derivatives *)
+    (x *: x, "x", Float 2. *: x);
+    (Sin x, "x", Cos x);
+    (Exp (x *: x), "x", Exp (x *: x) *: (Float 2. *: x));
+    (x ^: Float 3., "x", Float 3. *: (x ^: Float 2.));
+    (x *: Sin x, "x", Sin x +: (x *: Cos x));
+    ((x +: y) *: Sin x, "x", (x +: y) *: Cos x +: Sin x);
+    (Log x, "x", Float 1. /: x);
   ] in
 
-  List.iter (fun test_fn ->
+  List.iter (fun (input, var, expected) ->
+    let result = derivative var input in
     try
-      assert (test_fn ());
+      assert (simplify result =:= simplify expected);   
     with Assert_failure _ ->
-      print_endline "Failed\n"
+      Printf.printf "Input: %s\nVariable: %s\nExpected: %s\nGot: %s\n\n"
+        (string_of_expr input)
+        var
+        (string_of_expr expected)
+        (string_of_expr result)
   ) test_cases;
   
   print_endline "✓ Derivative tests completed!\n"
+
+let test_nth_derivative () =
+  print_endline "Testing nth derivative computation...";
+
+  let test_cases = [
+    (x *: x, "x", 2, Float 2.);
+    (x *: x, "x", 3, Float 0.);
+    (x ^: Float 3., "x", 2, Float 6. *: x);
+    (x ^: Float 3., "x", 3, Float 6.);
+    (x ^: Float 3., "x", 4, Float 0.);
+    (Sin x, "x", 4, Sin x);
+    (Cos x, "x", 4, Cos x);
+  ] in
+
+  List.iter (fun (input, var, n, expected) ->
+    let result = nth_derivative var n input in
+    try
+      assert (simplify result =:= simplify expected);   
+    with Assert_failure _ ->
+      Printf.printf "Input: %s\nVariable: %s\nN: %d\nExpected: %s\nGot: %s\n\n"
+        (string_of_expr input)
+        var
+        n
+        (string_of_expr expected)
+        (string_of_expr result)
+  ) test_cases;
+  
+  print_endline "✓ Nth derivative tests completed!\n"
 
 
 let test_gradient () =
@@ -228,15 +210,15 @@ let test_gradient () =
 
   let test_cases = [
     ((fun () ->
-        let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
+        let expr = (x *: x) +: (y *: y) in
         let grad = gradient expr in
         let x_der = List.assoc "x" grad in
         let y_der = List.assoc "y" grad in
-        x_der =:= (Float 2. *: Var "x") && 
-        y_der =:= (Float 2. *: Var "y")));
+        x_der =:= (Float 2. *: x) && 
+        y_der =:= (Float 2. *: y)));
     
     ((fun () ->
-        let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
+        let expr = x *: x +: y *: y in
         let env = [("x", 1.0); ("y", 2.0)] in
         let grad = gradient expr in
         let grad_values = eval_grad env grad in
@@ -244,7 +226,7 @@ let test_gradient () =
         List.assoc "y" grad_values = 4.0));
     
     ((fun () ->
-        let expr = Sin(Var "x") *: Cos(Var "y") in
+        let expr = Sin x *: Cos y in
         let grad = gradient expr in
         let env = [("x", 0.0); ("y", 0.0)] in
         let grad_values = eval_grad env grad in
@@ -267,14 +249,14 @@ let test_gradient_descent () =
 
   let test_cases = [
     ((fun () ->
-        let expr = Var "x" *: Var "x" in
+        let expr = x *: x in
         let env = [("x", 10.0)] in
         match gradient_descent ~expr ~env ~learning_rate:0.1 ~max_iter:100 with
         | Ok final_env -> abs_float (get_value "x" final_env) < 1e-3
         | Error _ -> false));
     
     ((fun () ->
-        let expr = Var "x" *: Var "x" +: Var "y" *: Var "y" in
+        let expr = x *: x +: y *: y in
         let env = [("x", 1.0); ("y", 1.0)] in
         match gradient_descent ~expr ~env ~learning_rate:0.1 ~max_iter:100 with
         | Ok final_env -> 
@@ -283,8 +265,8 @@ let test_gradient_descent () =
         | Error _ -> false));
     
     ((fun () ->
-        let expr = Pow(Var "x" -: Float 1., Float 2.) +: 
-                  Pow(Var "y" +: Float 2., Float 2.) in
+        let expr = Pow(x -: Float 1., Float 2.) +: 
+                  Pow(y +: Float 2., Float 2.) in
         let env = [("x", 0.0); ("y", 0.0)] in
         match gradient_descent ~expr ~env ~learning_rate:0.1 ~max_iter:200 with
         | Ok final_env ->
@@ -308,21 +290,21 @@ let test_solve_gradient_descent () =
 
   let test_cases = [
     ((fun () ->
-        let eq = (Var "x" *: Var "x", Float 1.) in
+        let eq = (x *: x, Float 1.) in
         let env = [("x", 0.1)] in
         match solve_gradient_descent eq ~initial_guess:env ~learning_rate:0.1 ~max_iter:100 with
         | Ok final_env -> abs_float (abs_float (get_value "x" final_env) -. 1.) < 0.1
         | Error _ -> false));
     
     ((fun () ->
-        let eq = (Var "x" *: Var "x" +: Var "y" *: Var "y", Float 1.) in
+        let eq = (x *: x +: y *: y, Float 1.) in
         let env = [("x", 1.0); ("y", 1.0)] in
         match solve_gradient_descent eq ~initial_guess:env ~learning_rate:0.1 ~max_iter:1000 with
         | Ok final_env -> abs_float (eval final_env (fst eq -: snd eq)) < 0.1
         | Error _ -> false));
 
     ((fun () ->
-        let eq = (Pow(Var "x" -: Float 1., Float 2.) +: Pow(Var "y" +: Float 2., Float 2.), Float 0.) in
+        let eq = (Pow(x -: Float 1., Float 2.) +: Pow(y +: Float 2., Float 2.), Float 0.) in
         let env = [("x", 0.1); ("y", -0.2)] in
         match solve_gradient_descent eq ~initial_guess:env ~learning_rate:0.1 ~max_iter:1000 with
         | Ok final_env -> abs_float (eval final_env (fst eq -: snd eq)) < 0.01
@@ -345,64 +327,64 @@ let test_newton () =
   let test_cases = [
     (* Basic equations *)
     ((fun () ->
-       let eq = (Pow (Var "x", Float 2.), Float 4.) in
+       let eq = (x ^: Float 2., Float 4.) in
        match solve_newton eq ~initial_guess:3.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. 2.0) < 1e-6
        | Error _ -> false));
 
     (* Trigonometric equations *)
     ((fun () ->
-       let eq = (Cos (Var "x"), Float 0.) in
+       let eq = (Cos x, Float 0.) in
        match solve_newton eq ~initial_guess:1.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. (Float.pi /. 2.)) < 1e-6
        | Error _ -> false));
 
     ((fun () ->
-       let eq = (Sin (Var "x"), Float 0.5) in
+       let eq = (Sin x, Float 0.5) in
        match solve_newton eq ~initial_guess:0.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. (Float.pi /. 6.)) < 1e-6
        | Error _ -> false));
 
     (* Complex trigonometric equations *)
     ((fun () ->
-       let eq = (Sin(Var "x") *: Cos(Var "x"), Float 0.25) in
+       let eq = (Sin x *: Cos x, Float 0.25) in
        match solve_newton eq ~initial_guess:0.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. 0.261799387791) < 1e-6
        | Error _ -> false));
 
     (* Exponential and logarithmic equations *)
     ((fun () ->
-       let eq = (Exp (Var "x"), Float 1.) in
+       let eq = (Exp x, Float 1.) in
        match solve_newton eq ~initial_guess:1.0 ~max_iter:50 with
        | Ok x -> Float.abs x < 1e-6
        | Error _ -> false));
 
     ((fun () ->
-       let eq = (Log (Var "x"), Float 1.) in
+       let eq = (Log x, Float 1.) in
        match solve_newton eq ~initial_guess:2.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. exp 1.) < 1e-6
        | Error _ -> false));
 
     (* Polynomial equations *)
     ((fun () ->
-       let eq = (((Var "x" -: Float 2.13) ^: Float 3.) +: (Var "x" -: Float 2.13), Float 0.) in
+       let eq = (((x -: Float 2.13) ^: Float 3.) +: (x -: Float 2.13), Float 0.) in
        match solve_newton eq ~initial_guess:2.0 ~max_iter:50 with
        | Ok x -> Float.abs (x -. 2.13) < 1e-6
        | Error _ -> false));
 
     (* Multivariate equations *)
     ((fun () ->
-       let eq = (Var "x" *: Var "x" +: Var "y" *: Var "y", Float 1.) in
+       let eq = (x *: x +: y *: y, Float 1.) in
        let env_guess = [("x", 0.5); ("y", 0.5)] in
        match solve_newton_multivar eq ~initial_guess:env_guess ~max_iter:100 with
        | Ok final_env ->
-           let x = get_value "x" final_env in
-           let y = get_value "y" final_env in
-           Float.abs (x *. x +. y *. y -. 1.0) < 1e-6
+           let val_x = get_value "x" final_env in
+           let val_y = get_value "y" final_env in
+           Float.abs (val_x *. val_x +. val_y *. val_y -. 1.0) < 1e-6
        | Error _ -> false));
 
     ((fun () ->
-       let eq = (Var "x" *: Var "y", Float 1.) in
+       let eq = (x *: y, Float 1.) in
        let env_guess = [("x", 2.05); ("y", 0.45)] in
        match solve_newton_multivar eq ~initial_guess:env_guess ~max_iter:100 with
        | Ok final_env ->
@@ -412,7 +394,7 @@ let test_newton () =
        | Error _ -> false));
 
     ((fun () ->
-       let eq = (Sin(Var "x") *: Cos(Var "y"), Float 0.25) in
+       let eq = (Sin x *: Cos y, Float 0.25) in
        let env_guess = ["x", 0.2; "y", 0.2] in
        match solve_newton_multivar eq ~initial_guess:env_guess ~max_iter:100 with
        | Ok final_env ->
@@ -438,21 +420,21 @@ let test_bisection () =
   let test_cases = [
     (* Basic polynomial *)
     ((fun () ->
-       let expr = Pow (Var "x", Float 2.) -: Float 4. in
+       let expr = Pow (x, Float 2.) -: Float 4. in
        match bisection ~f:expr ~a:0.0 ~b:3.0 ~tolerance:1e-6 ~max_iter:100 with
        | Ok result -> Float.abs (result -. 2.0) < 1e-6
        | Error _ -> false));
 
     (* Trigonometric equation *)
     ((fun () ->
-       let expr = Cos (Var "x") -: Float 0.5 in
+       let expr = Cos x -: Float 0.5 in
        match bisection ~f:expr ~a:0.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 with
        | Ok result -> Float.abs (result -. 1.0472) < 1e-3
        | Error _ -> false));
 
     (* Mixed equation *)
     ((fun () ->
-       let expr = Sin(Var "x") -: (Var "x" /: Float 2.) in
+       let expr = Sin(x) -: (x /: Float 2.) in
        match bisection ~f:expr ~a:1.0 ~b:2.0 ~tolerance:1e-6 ~max_iter:100 with
        | Ok result -> Float.abs (result -. 1.8954) < 1e-3
        | Error _ -> false));
@@ -468,55 +450,20 @@ let test_bisection () =
   print_endline "✓ Bisection method tests completed!\n"
 
 
-let test_lazy_evaluation () =
-  print_endline "Testing lazy evaluation...";
-  let counter = ref 0 in
-
-  let expensive_computation x = 
-    incr counter;
-    x *: x +: x in
-
-  let test_cases = [
-    ((fun () ->
-      counter := 0;
-      let expr = lazy_expr (fun () -> expensive_computation (Float 3.0)) in
-      let result1 = eval [] expr in
-      let result2 = eval [] expr in
-      result1 = 12.0 && result2 = 12.0 && !counter = 1));  (* Should be computed only once *)
-
-    ((fun () ->
-      counter := 0;
-      let expr = lazy_expr (fun () -> expensive_computation (Var "x")) in
-      let result1 = eval [("x", 2.0)] expr in
-      let result2 = eval [("x", 3.0)] expr in  (* Different x value *)
-      result1 = 6.0 && result2 = 12.0 && !counter = 1));  (* Should be computed once *)
-  ] in
-
-  List.iter (fun test_fn ->
-    try
-      assert (test_fn ());
-    with Assert_failure _ ->
-      print_endline "Failed\n"
-  ) test_cases;
-
-  print_endline "✓ Lazy evaluation tests completed!\n"
-
-
 (* Run all tests *)
 let run_tests () =
   print_endline "\nStarting Automatic Differentiation module tests...\n";
   test_env ();
   test_string_of_expr ();
-  test_latex_of_expr ();
   test_simplify ();
   test_eval ();
   test_derivative ();
+  test_nth_derivative ();
   test_gradient ();
   test_gradient_descent ();
   test_solve_gradient_descent ();
   test_newton ();
   test_bisection ();
-  test_lazy_evaluation ();
   print_endline "All tests completed successfully! ✓\n";;
 
 

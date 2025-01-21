@@ -41,7 +41,7 @@ let rec newton_raphson ~f ~f' ~variable ~x ~iter ~tol ~max_iter =
 let solve_newton ((lhs, rhs): equation) ~initial_guess ~max_iter =
   let f = lhs -: rhs in 
   let variable = get_variable f in
-  let f' = derivative f variable in
+  let f' = derivative variable f in
   newton_raphson 
     ~f ~f' ~variable
     ~x:initial_guess

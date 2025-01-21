@@ -1,17 +1,15 @@
-(* Represents a typed expression tree for automatic differentiation. *)
+(* Core expression type *)
 type expr =
   | Float of float
-  | Var   of string           (* Named variable *)
-  | Add   of expr * expr      (* Addition *)
-  | Sub   of expr * expr      (* Subtraction *)
-  | Mult  of expr * expr      (* Multiplication *)
-  | Div   of expr * expr      (* Division *)
-  | Pow   of expr * expr      (* Power with constant exponent *)
-  | Exp   of expr             (* Exponential function *)
-  | Log   of expr             (* Natural logarithm *)
-  | Sin   of expr             (* Sine function *)
-  | Cos   of expr             (* Cosine function *)
-  | Lazy  of (unit -> expr)   (* Function that returns expr when needed *)
+  | Var of string
+  | Neg of expr
+  | Sum of expr list        (* n-ary addition *)
+  | Product of expr list    (* n-ary multiplication *)
+  | Pow of expr * expr      (* exponentation *)
+  | Exp of expr             (* exponential function *)
+  | Log of expr             (* natural logarithm *)
+  | Sin of expr
+  | Cos of expr
 
 
 (* Gradient is a list of pairs (var, partial derivative with respect to var) *)
@@ -23,33 +21,74 @@ type equation = expr * expr
 
 
 (* Operator overloading for more natural expression syntax *)
-let ( +: ) a b = Add (a, b)
-let ( -: ) a b = Sub (a, b)
-let ( *: ) a b = Mult (a, b)
-let ( /: ) a b = Div (a, b)
+let ( +: ) a b = Sum [a; b]
+let ( -: ) a b = Sum [a; Neg b]
+let ( *: ) a b = Product [a; b]
+let ( /: ) a b = Product [a; Pow (b, Float (-1.))]
 let ( ^: ) x n = Pow (x, n)
 
 let rec (=:=) e1 e2 =
   match e1, e2 with
   | Float a, Float b -> abs_float (a -. b) < 1e-10
   | Var a,   Var b   -> a = b
-  
-  | Add (a1, b1),  Add (a2, b2) 
-  | Sub (a1, b1),  Sub (a2, b2)
-  | Mult (a1, b1), Mult (a2, b2)
-  | Div (a1, b1),  Div (a2, b2)
-  | Pow (a1, b1),  Pow (a2, b2) -> a1 =:= a2 && b1 =:= b2
+  | Neg a,   Neg b   -> a =:= b
+
+  | Sum     a1, Sum     a2 
+  | Product a1, Product a2 -> List.equal (=:=) a1 a2
+
+  | Pow (a1, b1), Pow (a2, b2) -> a1 =:= a2 && b1 =:= b2
 
   | Exp a1, Exp a2 
   | Log a1, Log a2
   | Sin a1, Sin a2 
   | Cos a1, Cos a2 -> a1 =:= a2
 
-  | Lazy f1, Lazy f2 -> f1 () =:= f2 ()   (* Force evaluation only when comparing *)
-  | Lazy f, e -> f () =:= e               (* Handle one side lazy *)
-  | e, Lazy f -> e =:= f ()               (* Handle other side lazy *)
-  
   | _ -> false
+
+
+  let rec expr_compare e1 e2 =
+    let rec expr_category = function
+      | Float _   -> 0  (* Constants first *)
+      | Var _     -> 2  (* Then variables *)
+      | Product _ -> 4  (* Then products *)
+      | Sum _     -> 6  (* Then sums *)
+      | Pow _     -> 8  (* Then powers *)
+      | Sin _     -> 10  (* Then trig functions *)
+      | Cos _     -> 12
+      | Log _     -> 14  (* Then other functions *)
+      | Exp _     -> 16
+      | Neg e     -> expr_category e - 1  (* Negation in between *)
+      (* TODO: shouldn't pow be in between? Maybe all the functions? *)
+    in
+  
+    let cat1 = expr_category e1 in
+    let cat2 = expr_category e2 in
+    if cat1 <> cat2 then compare cat1 cat2
+    else match e1, e2 with
+      (* Built-in comparison *)
+      | Float a, Float b -> compare a b
+      | Var a, Var b -> String.compare a b
+      
+      (* Sum and product comparison *)
+      | Sum es1, Sum es2 
+      | Product es1, Product es2 ->
+        let sorted1 = List.sort expr_compare es1 in
+        let sorted2 = List.sort expr_compare es2 in
+        List.compare expr_compare sorted1 sorted2
+      
+      (* Pow comparison *)
+      | Pow (a1, b1), Pow (a2, b2) -> 
+        let cmp = expr_compare a1 a2 in
+        if cmp <> 0 then cmp else expr_compare b1 b2
+        
+      (* Unary functions *)
+      | Neg a, Neg b 
+      | Sin a, Sin b
+      | Cos a, Cos b
+      | Log a, Log b
+      | Exp a, Exp b -> expr_compare a b
+      
+      | _ -> failwith "Invalid comparison"
 
 
 (* Set of strings *)
@@ -64,13 +103,13 @@ let get_variables expr =
     match expr with
     | Float _ -> set
     | Var x -> VarSet.add x set
+    | Neg e -> aux set e
     | Exp e | Log e | Sin e | Cos e -> aux set e
-    | Lazy f -> aux set (f ())  (* Changed: call function *)
-    | Add (e1, e2) | Sub (e1, e2) 
-    | Mult(e1, e2) | Div (e1, e2)
+    | Sum es | Product es -> List.fold_left aux set es
     | Pow (e1, e2) -> aux (aux set e2) e1
   in
   VarSet.elements (aux VarSet.empty expr)
+
 
 (* Get variable if there's exactly one, fail if 0 or >= 2 *)
 let get_variable expr = 
@@ -82,12 +121,12 @@ let get_variable expr =
 
 (* General precedence function for determining when parentheses are needed. *)
 let precedence = function
-  | Add _ | Sub _ -> 1                 (* Lowest precedence *)
-  | Mult _ | Div _ -> 2                (* Medium precedence *)
+  | Sum _ -> 1                         (* Lowest precedence *)
+  | Product _ -> 2                     (* Medium precedence *)
   | Pow _ -> 3                         (* Higher precedence *)
   | Exp _ | Log _ | Sin _ | Cos _ -> 4 (* Functions *)
   | Float _ | Var _ -> 5               (* Constants and variables have the highest precedence *)
-  | Lazy _ -> 6                        (* Lazy expressions have the highest precedence *)
+  | Neg _ -> 6                         (* Negation has the highest precedence *)
 
 
 (* General parenthesize function for different conversions. *)
@@ -105,133 +144,38 @@ let rec string_of_expr expr =
   match expr with
   | Float x -> string_of_float x
   | Var s -> s
+
+  | Neg (Float n) -> string_of_float (-.n)
+  | Neg (Sum es) -> 
+      "- " ^ String.concat " - " (List.map (fun e -> parenthesize 1 e string_of_expr) es)
+  | Sum es -> 
+      (match es with
+       | [] -> "0"
+       | first :: rest ->
+           string_of_expr first ^ 
+           String.concat "" 
+             (List.map (fun e -> match e with
+               | Neg x -> " - " ^ parenthesize 1 x string_of_expr
+               | x -> " + " ^ string_of_expr x) rest))
+  | Product es -> 
+      (match es with
+       | [] -> "1"
+       | [x] -> string_of_expr x
+       | first :: rest ->
+           parenthesize 2 first string_of_expr ^ 
+           String.concat "" 
+             (List.map (fun e -> match e with
+               | Pow (x, Float n) when n < 0. -> 
+                   " / " ^ parenthesize 2 x string_of_expr
+               | x -> " * " ^ parenthesize 2 x string_of_expr) rest))
+  | Neg (Product _ as x) -> 
+      "-" ^ parenthesize 6 x string_of_expr
+  | Neg x -> "-" ^ parenthesize 6 x string_of_expr
   | Exp a -> "exp(" ^ string_of_expr a ^ ")"
   | Log a -> "log(" ^ string_of_expr a ^ ")"
   | Sin a -> "sin(" ^ string_of_expr a ^ ")"
   | Cos a -> "cos(" ^ string_of_expr a ^ ")"
-  | Add (a, b) -> parenthesize 1 a string_of_expr ^ " + " ^ parenthesize 1 b string_of_expr
-  | Sub (a, b) -> parenthesize 1 a string_of_expr ^ " - " ^ parenthesize 2 b string_of_expr
-  | Mult(a, b) -> parenthesize 2 a string_of_expr ^ " * " ^ parenthesize 2 b string_of_expr
-  | Div (a, b) -> parenthesize 2 a string_of_expr ^ " / " ^ parenthesize 3 b string_of_expr
-  | Pow (a, b) -> parenthesize 3 a string_of_expr ^ "^" ^ parenthesize 4 b string_of_expr
-  | Lazy e -> "lazy(" ^ string_of_expr (e ()) ^ ")"
-
-
-(* Convert expression to LaTeX for visualization and reporting *)
-let rec latex_of_expr expr =
-  match expr with
-  | Float x -> string_of_float x
-  | Var s -> s
-  | Exp a -> "e^{" ^ latex_of_expr a ^ "}"
-  | Log a -> "\\log{" ^ latex_of_expr a ^ "}"
-  | Sin a -> "\\sin{" ^ latex_of_expr a ^ "}"
-  | Cos a -> "\\cos{" ^ latex_of_expr a ^ "}"
-  | Add (a, b) -> parenthesize 1 a latex_of_expr ^ " + " ^ parenthesize 1 b latex_of_expr
-  | Sub (a, b) -> parenthesize 1 a latex_of_expr ^ " - " ^ parenthesize 2 b latex_of_expr
-  | Mult(a, b) -> parenthesize 2 a latex_of_expr ^ " \\cdot " ^ parenthesize 2 b latex_of_expr
-  | Div (a, b) -> "\\frac{" ^ latex_of_expr a ^ "}{" ^ latex_of_expr b ^ "}"
-  | Pow (a, b) -> parenthesize 3 a latex_of_expr ^ "^{" ^ parenthesize 4 b latex_of_expr ^ "}"
-  | Lazy e -> "lazy(" ^ latex_of_expr (e ()) ^ ")"
-
-
-(* Helper function to apply simplify recursively only once *)
-let rec simplify_once expr = 
-  match expr with
-  (* Error handling *)
-  | Div (_, Float 0.)          -> failwith "division by zero"
-  | Log (Float x) when x <= 0. -> failwith "log of non-positive number"
-
-  (* Base cases *)
-  | Float x -> Float x
-  | Var x -> Var x
-
-  (* Calculating constant values *)
-  | Mult (Float 0., _) -> Float 0.
-  | Mult (_, Float 0.) -> Float 0.
-  | Div  (Float 0., _) -> Float 0.
-  | Pow  (_, Float 0.) -> Float 1. 
-  | Add  (Float a, Float b) -> Float (a +. b)
-  | Sub  (Float a, Float b) -> Float (a -. b)
-  | Mult (Float a, Float b) -> Float (a *. b)
-  | Div  (Float a, Float b) -> Float (a /. b)
-  | Pow  (Float a, Float b) -> Float (a ** b)
-  | Log (Float x) -> Float (log x)
-  | Exp (Float x) -> Float (exp x)
-  | Sin (Float x) -> Float (sin x)
-  | Cos (Float x) -> Float (cos x)
-
-  (* Now we are sure that matched arguments of expressions aren't only constants.
-  It's important for many simplifications so we won't get into infinite recursion! *)
-
-  (* Identity operations *)
-  | Add  (Float 0., x) -> simplify_once x 
-  | Add  (x, Float 0.) -> simplify_once x
-  | Sub  (x, Float 0.) -> simplify_once x
-  | Mult (Float 1., x) -> simplify_once x
-  | Mult (x, Float 1.) -> simplify_once x
-  | Div  (x, Float 1.) -> simplify_once x
-  | Pow  (x, Float 1.) -> simplify_once x
-  | Log (Exp x)        -> simplify_once x
-  | Exp (Log x)        -> simplify_once x
-
-  (* Sort expressions *)
-  | Mult (y, Float x) -> simplify_once (Mult (Float x, y))
-  | Add  (Float x, y) -> simplify_once (Add(y, Float x))
-  (* Since we matched all-float expressions already, we are sure y is not Float.
-  Therefore this part of code is infinite-recursion safe *)
-
-  (* Other algebraic simplifications *)
-  | Sub (x, y)          when x =:= y -> Float 0.
-  | Sub (x, Float y)    when y < 0.  -> simplify_once (x +: Float (-.y))
-  | Add (x, y)          when x =:= y -> simplify_once (Float 2. *: x)
-
-  | Mult(Pow (x, n), y) when x =:= y -> simplify_once (x ^: (n +: Float 1.))
-  | Mult(y, Pow(x, n))  when x =:= y -> simplify_once (x ^: (n +: Float 1.))
-  | Div(Pow (x, n), y)  when x =:= y -> simplify_once (x ^: (n -: Float 1.))
-  | Div(y, Pow (x, n))  when x =:= y -> simplify_once (x ^: (Float 1. -: n))
-  | Div(Pow(x, n), Pow(y, m)) when x =:= y -> simplify_once (Pow(x, n -: m))
-  | Mult(Pow(x, n), Pow(y, m)) when x =:= y -> simplify_once (Pow(x, n +: m))
-  
-  | Add(Log(x), Log(y)) -> simplify_once (Log(x *: y))
-  | Sub(Log(x), Log(y)) -> simplify_once (Log(x /: y))
-
-  (* Recursively simplify complex expressions *)
-  | Add (a, b) ->
-    let a' = simplify_once a in
-    let b' = simplify_once b in
-    (Add (a', b'))
-  | Sub (a, b) ->
-    let a' = simplify_once a in
-    let b' = simplify_once b in
-    (Sub (a', b'))
-  | Mult (a, b) ->
-    let a' = simplify_once a in
-    let b' = simplify_once b in
-    (Mult (a', b'))
-  | Div (a, b) ->
-    let a' = simplify_once a in
-    let b' = simplify_once b in
-    (Div (a', b'))
-  | Pow (a, b) ->
-    let a' = simplify_once a in
-    let b' = simplify_once b in
-    (Pow (a', b'))
-
-  (* Recursively simplify unary functions *)
-  | Exp a -> Exp (simplify_once a)
-  | Log a -> Log (simplify_once a)
-  | Sin a -> Sin (simplify_once a)
-  | Cos a -> Cos (simplify_once a)
-  | Lazy f -> Lazy (fun () -> simplify_once (f ()))  (* Keep expression lazy while simplifying *)
-
-(* Simplifies expression by applying algebraic rules *)
-let simplify expr =
-  let simplified = simplify_once expr in
-  if expr =:= simplified then expr
-  else simplify_once simplified
-
-
-(* Make expression lazy - use OCaml's built-in lazy type for memoization *)
-let lazy_expr f = 
-  let lazy_val = Lazy.from_fun f in
-  Lazy (fun () -> Lazy.force lazy_val)
+  | Pow (a, Float n) when n < 0. ->
+      parenthesize 2 a string_of_expr ^ "^" ^ string_of_float n ^ "."
+  | Pow (a, b) -> 
+      parenthesize 3 a string_of_expr ^ "^" ^ parenthesize 4 b string_of_expr

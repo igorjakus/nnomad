@@ -1,4 +1,6 @@
 open Expr
+open Simplify
+
 
 (* Environment type for variable bindings *)
 type env = (string * float) list
@@ -18,34 +20,30 @@ let update_env (env: env) (updates: env) =
 let rec eval (env: env) (expr: expr): float =
   match simplify expr with
   | Float x -> x
+  | Neg e -> -. eval env e
   | Var s -> get_value s env
-  | Add (a, b)  -> eval env a +. eval env b
-  | Sub (a, b)  -> eval env a -. eval env b
-  | Mult (a, b) -> eval env a *. eval env b
-  | Div (a, b)  -> eval env a /. eval env b
-  | Pow (a, n)  -> Float.pow (eval env a) (eval env n)
+  | Sum     es -> List.fold_left (fun acc e -> acc +. eval env e) 0. es
+  | Product es -> List.fold_left (fun acc e -> acc *. eval env e) 1. es
+  | Pow (a, n) -> Float.pow (eval env a) (eval env n)
   | Exp a -> Float.exp (eval env a)
   | Log a -> Float.log (eval env a)
   | Sin a -> Float.sin (eval env a)
   | Cos a -> Float.cos (eval env a)
-  | Lazy f -> eval env (f ()) (* Get the cached result *)
 
 
 (* Evaluates an expression at a specific value assuming it is single-var expr *)
 let rec eval_at (value: float) (expr: expr): float =
   match simplify expr with
   | Float x -> x
+  | Neg e -> -. eval_at value e
   | Var _ -> value  (* ignore what variable it is, substitude with val *)
-  | Add (a, b)  -> eval_at value a +. eval_at value b
-  | Sub (a, b)  -> eval_at value a -. eval_at value b
-  | Mult (a, b) -> eval_at value a *. eval_at value b
-  | Div (a, b)  -> eval_at value a /. eval_at value b
-  | Pow (a, n)  -> Float.pow (eval_at value a) (eval_at value n)
+  | Sum     es -> List.fold_left (fun acc e -> acc +. eval_at value e) 0. es
+  | Product es -> List.fold_left (fun acc e -> acc *. eval_at value e) 1. es
+  | Pow (a, n) -> Float.pow (eval_at value a) (eval_at value n)
   | Exp a -> Float.exp (eval_at value a)
   | Log a -> Float.log (eval_at value a)
   | Sin a -> Float.sin (eval_at value a)
   | Cos a -> Float.cos (eval_at value a)
-  | Lazy e -> eval_at value (e ())
 
 
 (* Evaluates a gradient given an environment mapping variables to values *)

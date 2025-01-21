@@ -31,8 +31,8 @@ let rec derivative var = function
       Float n *: (Var x ^: Float (n -. 1.))        (* Simple power rule *)
   | Pow (f, n) ->                                  (* General power rule *)
       let n' = n -: Float 1. in 
-      let power = f ^: n' in
-      simplify (n *: power *: derivative var f)
+      let power' = f ^: n' in
+      simplify (n *: power' *: derivative var f)
 
   (* Chain rules for elementary functions *)
   | Exp f -> 

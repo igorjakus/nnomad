@@ -152,45 +152,57 @@ let test_derivative () =
   print_endline "Testing derivative computation...";
 
   let test_cases = [
-    ((fun () ->
-        let expr = x *: x in
-        derivative "x" expr =:= (Float 2. *: x)));
-    
-    ((fun () ->
-        let expr = Sin x in
-        derivative "x" expr =:= Cos x));
-    
-    ((fun () ->
-        let expr = Exp (x *: x) in
-        let der = derivative "x" expr in
-        simplify der =:= (Exp (x *: x) *: (Float 2. *: x))));
-    
-    ((fun () ->
-        let expr = x ^: Float 3. in
-        derivative "x" expr =:= (Float 3. *: (x ^: Float 2.))));
-    
-    ((fun () ->
-        let expr = x *: Sin x in
-        let der = derivative "x" expr in
-        simplify der =:= (Sin x +: (x *: Cos x))));
-    
-    ((fun () ->
-        let expr = x *: x in
-        nth_derivative "x" 2 expr =:= Float 2.));
-    
-    ((fun () ->
-        let expr = x *: x in
-        nth_derivative "x" 3 expr =:= Float 0.));
+    (* Basic derivatives *)
+    (x *: x, "x", Float 2. *: x);
+    (Sin x, "x", Cos x);
+    (Exp (x *: x), "x", Exp (x *: x) *: (Float 2. *: x));
+    (x ^: Float 3., "x", Float 3. *: (x ^: Float 2.));
+    (x *: Sin x, "x", Sin x +: (x *: Cos x));
+    ((x +: y) *: Sin x, "x", (x +: y) *: Cos x +: Sin x);
+    (Log x, "x", Float 1. /: x);
   ] in
 
-  List.iter (fun test_fn ->
+  List.iter (fun (input, var, expected) ->
+    let result = derivative var input in
     try
-      assert (test_fn ());
+      assert (simplify result =:= simplify expected);   
     with Assert_failure _ ->
-      print_endline "Failed\n"
+      Printf.printf "Input: %s\nVariable: %s\nExpected: %s\nGot: %s\n\n"
+        (string_of_expr input)
+        var
+        (string_of_expr expected)
+        (string_of_expr result)
   ) test_cases;
   
   print_endline "✓ Derivative tests completed!\n"
+
+let test_nth_derivative () =
+  print_endline "Testing nth derivative computation...";
+
+  let test_cases = [
+    (x *: x, "x", 2, Float 2.);
+    (x *: x, "x", 3, Float 0.);
+    (x ^: Float 3., "x", 2, Float 6. *: x);
+    (x ^: Float 3., "x", 3, Float 6.);
+    (x ^: Float 3., "x", 4, Float 0.);
+    (Sin x, "x", 4, Sin x);
+    (Cos x, "x", 4, Cos x);
+  ] in
+
+  List.iter (fun (input, var, n, expected) ->
+    let result = nth_derivative var n input in
+    try
+      assert (simplify result =:= simplify expected);   
+    with Assert_failure _ ->
+      Printf.printf "Input: %s\nVariable: %s\nN: %d\nExpected: %s\nGot: %s\n\n"
+        (string_of_expr input)
+        var
+        n
+        (string_of_expr expected)
+        (string_of_expr result)
+  ) test_cases;
+  
+  print_endline "✓ Nth derivative tests completed!\n"
 
 
 let test_gradient () =
@@ -446,6 +458,7 @@ let run_tests () =
   test_simplify ();
   test_eval ();
   test_derivative ();
+  test_nth_derivative ();
   test_gradient ();
   (* test_gradient_descent (); *)
   (* test_solve_gradient_descent (); *)

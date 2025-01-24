@@ -178,6 +178,7 @@ let test_string_of_expr () =
     (x ^: (y /: z), "x^{y / z}");
     (x ^: (y ^: z), "x^{y^z}");
     (x ^: (Neg y), "x^{-y}");
+    (Float 24. *: Pow (x, Float (-5.)), "24 * x^{-5}");
 
     (* Exponential, logarithm and trigonometric *)
     (Exp x, "exp(x)");

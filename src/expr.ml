@@ -201,11 +201,16 @@ let rec string_of_expr expr =
           parenthesize 2 first string_of_expr ^ 
           String.concat "" 
             (List.map (fun e -> match e with
-              | Pow (x, Float n) when n < 0. -> 
+              | Pow (x, Float n) when n = -1. ->
                   if is_atomic x then
                     " / " ^ string_of_expr x
                   else
                     " / (" ^ string_of_expr x ^ ")"
+              | Pow (x, Float n) when n < 0. ->
+                  if is_atomic x then
+                    " * " ^ string_of_expr (Pow (x, Float n))
+                  else
+                    " * (" ^ string_of_expr (Pow (x, Float n)) ^ ")"
               | Float f when f < 0. ->
                   " * (" ^ string_of_expr e ^ ")"
               | Neg _ ->

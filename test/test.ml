@@ -64,8 +64,8 @@ let test_simplify () =
     (x +: x,            Float 2. *: x);
     (Log (Exp x),       x);
     (Exp (Log x),       x);
-    (Sum [Neg (Var "x"); Neg (Var "y"); Var "x"; Var "y"; Var "z"], z);
-    (Sum [Var "x"; Var "y"; Var "z"; Neg (Var "x"); Neg (Var "y")], z);
+    (Sum [Neg (x); Neg (y); x; y; z], z);
+    (Sum [x; y; z; Neg (x); Neg (y)], z);
     
     (* More complex simplifications *)
     (x -: Float (-2.),                   Float 2. +: x);
@@ -122,20 +122,88 @@ let test_string_of_expr () =
   print_endline "Testing string_of_expr...";
 
   let test_cases = [
+    (* Variables *)
     (x, "x");
-    (Float 3.14, "3.14");
-    (x +: Float 2., "x + 2.");
-    (x *: (y +: Float 3.), "x * (y + 3.)");
-    (x ^: Float 2., "x^2.");
-    (Exp x, "exp(x)");
-    (Log (x *: y), "log(x * y)");
+    (Var "monad", "monad");
+
+    (* Constants *)
+    (Float 0., "0");
+    (Float 1., "1");
+    (Float 3.1415, "3.1415");
+    (Float (-2.13), "-2.13");
+    (pi, "π");
+    (e, "e");
+
+    (* Products *)
+    (Product [x; y; z], "x * y * z");
+    (Product [x; y; z; Float 2.], "x * y * z * 2");
+    (Product [x; y; z; Float (-2.13)], "x * y * z * (-2.13)");
+    (Product [x; y; z; Float (-2.13); Float 3.], "x * y * z * (-2.13) * 3");
+    (Product [x; y +: z; x], "x * (y + z) * x");
+
+    (* Negation *)
+    (Neg x, "-x");
+    (Neg (Neg x), "-(-x)");
+    (Neg (x +: y), "-(x + y)");
+    (Neg (x *: y), "-(x * y)");
+    (Neg (x /: y), "-(x / y)");
+    (Neg (x ^: y), "-(x^y)");
+    (Neg (Exp x), "-exp(x)");
+    (Neg (Log x), "-log(x)");
+    (Neg (Sin x), "-sin(x)");
+    (Neg (Cos x), "-cos(x)");
+    (Neg (Sin x *: Cos y), "-(sin(x) * cos(y))");
+    (Neg (Sin x *: Cos y +: Exp(x /: y)), "-(sin(x) * cos(y) + exp(x / y))");
+    (Neg (Sum [x; y; z]), "-(x + y + z)");
+    (Neg (Product [x; y; z]), "-(x * y * z)");
+
+    (* Sums *)
+    (x +: Float 2., "x + 2");
+    (x +: Float 3.5, "x + 3.5");
+    (x +: Neg(Float 3.5), "x - 3.5");
+    (x +: y, "x + y");
     (x -: y, "x - y");
-    (x /: (y +: Float 1.), "x / (y + 1.)");
-    (Exp (Float 1.), "e");
+    (Sum [x; y; z], "x + y + z");
+    (Sum [Neg (x); Neg (y); x; y; z], "-x - y + x + y + z");
+    (Sum [x; y; z; Neg (x); Neg (y)], "x + y + z - x - y");
+
+    (* Powers *)
+    (x ^: Float 2., "x^2");
+    (x ^: Float 3.13, "x^3.13");
+    (x ^: Float (-2.13), "x^{-2.13}");
+    (x ^: y, "x^y");
+    (x ^: (Float 2. *: x), "x^{2 * x}");
+    (x ^: (y +: Float 2.), "x^{y + 2}");
+    (x ^: (y *: z), "x^{y * z}");
+    (x ^: (y /: z), "x^{y / z}");
+    (x ^: (y ^: z), "x^{y^z}");
+    (x ^: (Neg y), "x^{-y}");
+
+    (* Exponential, logarithm and trigonometric *)
+    (Exp x, "exp(x)");
+    (Log x, "log(x)");
+    (Log (x *: y), "log(x * y)");
+    (Sin x, "sin(x)");
+    (Cos x, "cos(x)");
+
+    (* Division *)
+    (x /: y, "x / y");
+    (x /: Neg(y), "x / (-y)");
+    (Float 1. /: x, "1 / x");
+    (x /: Float 2., "x / 2");
+    (x /: Float 2.5, "x / 2.5");
+    (x /: Float (-2.5), "x / -2.5");
+    (x /: (y +: Float 2.), "x / (y + 2)");
     (y /: (x /: y), "y / (x / y)");
-    (x /: (y /: x), "x / (y / x)");
-    ((x /: y) /: (y /: x), "(x / y) / (y / x)");
-    ((x *: y) /: (y *: x), "(x * y) / (y * x)");
+    ((x /: y) /: (y /: x), "(x / y) / (y / x)"); (* FIXME: *)
+    ((x *: y) /: (y *: x), "(x * y) / (y * x)"); (* FIXME: *)
+    ((x +: y) /: x, "(x + y) / x");
+
+    (* Mixed expressions *)
+    (x *: (y +: Float 3.), "x * (y + 3)");
+    (x *: (y +: Float 3.5), "x * (y + 3.5)");
+    (x *: (y +: Float (-3.5)), "x * (y - 3.5)");
+
   ] in
 
   List.iter (fun (input, expected) ->

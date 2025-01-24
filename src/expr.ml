@@ -132,12 +132,18 @@ let get_variable expr =
   | _   -> failwith "more than one variable in expression"
 
 
+(* Helper to print floats without unnecessary .0 *)
+let string_of_float_simpl f =
+  let i = int_of_float f in
+  if float_of_int i = f then string_of_int i else string_of_float f
+
+
 (* General precedence function for determining when parentheses are needed. *)
 let precedence = function
   | Sum _ -> 1                         (* Lowest precedence *)
   | Product _ -> 2                     (* Medium precedence *)
   | Pow _ -> 3                         (* Higher precedence *)
-  | Exp _ | Log _ | Sin _ | Cos _ -> 4 (* Functions *)
+  | Exp _ | Log _ | Sin _ | Cos _ -> 7 (* increased to avoid extra parens under Neg *)
   | Float _ | Var _ -> 5               (* Constants and variables have the highest precedence *)
   | Neg _ -> 6                         (* Negation has the highest precedence *)
 
@@ -152,54 +158,79 @@ let parenthesize parent_prec child_expr converter =
     child_str
 
 
+(* Helper to check if expression is a simple variable or float *)
+let is_atomic = function
+  | Var _ | Float _ -> true
+  | _ -> false
+
+
 (* Convert expression to a string for debugging and visualization *)
 let rec string_of_expr expr =
-  (* FIXME: *)
   match expr with
-  | expr when expr =:= e -> "e"
-  | expr when expr =:= pi -> "π"
-  | Float x -> string_of_float x
+  | Float _ as expr when expr =:= e -> "e"
+  | Float _ as expr when expr =:= pi -> "π"
+  | Float x -> string_of_float_simpl x
+  
   | Var s -> s
   
-  | Neg (Float n) -> string_of_float (-.n)
-  | Neg (Sum es)  -> "-(" ^ string_of_expr (Sum es) ^ ")"
-  | Neg (Product _ as x) -> 
-    "-" ^ parenthesize 6 x string_of_expr
-  | Neg x -> "-" ^ parenthesize 6 x string_of_expr
+  | Neg e ->
+    begin match e with
+    | Neg _ -> "-(" ^ string_of_expr e ^ ")"
+    | Float f when f >= 0. -> "-" ^ string_of_float_simpl f
+    | Var _ | Exp _ | Log _ | Sin _ | Cos _ -> "-" ^ string_of_expr e
+    | _ -> "-(" ^ string_of_expr e ^ ")"
+    end
+ 
+  | Sum es ->
+    begin match es with
+      | [] -> "0"
+      | first :: rest ->
+          string_of_expr first ^ 
+          String.concat "" 
+            (List.map (fun e -> match e with
+              | Float f when f < 0. -> " - " ^ string_of_float_simpl (-.f)
+              | Neg x -> " - " ^ parenthesize 1 x string_of_expr
+              | x -> " + " ^ string_of_expr x) rest)
+      end
 
-  | Sum es -> 
-      begin match es with
-       | [] -> "0"
-       | first :: rest ->
-           string_of_expr first ^ 
-           String.concat "" 
-             (List.map (fun e -> match e with
-               | Neg x -> " - " ^ parenthesize 1 x string_of_expr
-               | x -> " + " ^ string_of_expr x) rest)
-       end
   | Product es -> 
-      (match es with
-       | [] -> "1"
-       | [x] -> string_of_expr x
-       | first :: rest ->
-           parenthesize 2 first string_of_expr ^ 
-           String.concat "" 
-             (List.map (fun e -> match e with
-               | Pow (x, Float n) when n < 0. -> 
-                   " / " ^ parenthesize 2 x string_of_expr
-               | x -> " * " ^ parenthesize 2 x string_of_expr) rest))
+    begin match es with
+      | [] -> "1"
+      | [x] -> string_of_expr x
+      | first :: rest ->
+          parenthesize 2 first string_of_expr ^ 
+          String.concat "" 
+            (List.map (fun e -> match e with
+              | Pow (x, Float n) when n < 0. -> 
+                  if is_atomic x then
+                    " / " ^ string_of_expr x
+                  else
+                    " / (" ^ string_of_expr x ^ ")"
+              | Float f when f < 0. ->
+                  " * (" ^ string_of_expr e ^ ")"
+              | Neg _ ->
+                  " * (" ^ string_of_expr e ^ ")"
+              | Product _ ->
+                  " * (" ^ string_of_expr e ^ ")"
+              | x -> " * " ^ parenthesize 2 x string_of_expr) rest) 
+    end
+
+  | Pow (a, Neg b) ->
+      parenthesize 3 a string_of_expr ^ "^{" ^ "-" ^ string_of_expr b ^ "}"
+  | Pow (a, Float n) ->
+      let str_exponent =
+        string_of_float_simpl n
+      in
+      if n < 0. then
+        parenthesize 3 a string_of_expr ^ "^{" ^ str_exponent ^ "}"
+      else
+        parenthesize 3 a string_of_expr ^ "^" ^ str_exponent
+  | Pow (a, Var x) -> 
+      parenthesize 3 a string_of_expr ^ "^" ^ x
+  | Pow (a, b) -> 
+      parenthesize 3 a string_of_expr ^ "^{" ^ string_of_expr b ^ "}"
   
-  | Exp (Float 1.) -> "e"
   | Exp a -> "exp(" ^ string_of_expr a ^ ")"
-  
   | Log a -> "log(" ^ string_of_expr a ^ ")"
   | Sin a -> "sin(" ^ string_of_expr a ^ ")"
   | Cos a -> "cos(" ^ string_of_expr a ^ ")"
-
-  | Pow (a, Float n) ->
-      if mod_float n 1. = 0. then
-        parenthesize 2 a string_of_expr ^ "^" ^ string_of_int (int_of_float n)
-      else 
-        parenthesize 2 a string_of_expr ^ "^" ^ string_of_float n
-  | Pow (a, b) -> 
-      parenthesize 3 a string_of_expr ^ "^{" ^ string_of_expr b ^ "}"

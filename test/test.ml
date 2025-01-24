@@ -85,9 +85,9 @@ let test_simplify () =
     (* (Sin (pi -: x), Sin x); *) (* sin(π-x) = sin(x) *)
 
     (* Division simplifications *)
-    (y /: (x /: y), y *: y /: x);
-    (x /: (y /: x), (x *: x) /: y);
-    ((x /: y) /: (y /: x), (x *: x) /: (y *: y));
+    (y /: (x /: y), (Pow(y, Float 2.)) /: x);
+    (x /: (y /: x), (Pow(x, Float 2.)) /: y);
+    ((x /: y) /: (y /: x), (Pow(x, Float 2.)) /: (y *: y));
     
     (* Mixed operations *)
     ((x /: y) *: (y /: x), Float 1.);

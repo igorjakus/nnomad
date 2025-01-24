@@ -10,6 +10,10 @@ type expr =
   | Sin of expr
   | Cos of expr
 
+(* Constants *)
+val pi: expr
+val e: expr
+
 type gradient = (string * expr) list
 type equation = expr * expr
 

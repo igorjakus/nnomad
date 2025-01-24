@@ -1,15 +1,20 @@
 (* Core expression type *)
 type expr =
-  | Float of float
-  | Var of string
-  | Neg of expr
+  | Float of float          (* constant *)
+  | Var of string           (* variable *)
+  | Neg of expr             (* unary negation *)
   | Sum of expr list        (* n-ary addition *)
   | Product of expr list    (* n-ary multiplication *)
   | Pow of expr * expr      (* exponentation *)
   | Exp of expr             (* exponential function *)
   | Log of expr             (* natural logarithm *)
-  | Sin of expr
-  | Cos of expr
+  | Sin of expr             (* sine function *)
+  | Cos of expr             (* cosine function *)
+
+
+(* Constants *)
+let pi = Float 3.14159265358979323846
+let e = Float 2.71828182845904523536
 
 
 (* Gradient is a list of pairs (var, partial derivative with respect to var) *)
@@ -48,17 +53,18 @@ let rec (=:=) e1 e2 =
 
   let rec expr_compare e1 e2 =
     let rec expr_category = function
-      | Float _   -> 0  (* Constants first *)
-      | Var _     -> 2  (* Then variables *)
-      | Product _ -> 4  (* Then products *)
-      | Sum _     -> 6  (* Then sums *)
-      | Pow _     -> 8  (* Then powers *)
-      | Sin _     -> 10  (* Then trig functions *)
-      | Cos _     -> 12
-      | Log _     -> 14  (* Then other functions *)
-      | Exp _     -> 16
-      | Neg e     -> expr_category e - 1  (* Negation in between *)
-      (* TODO: shouldn't pow be in between? Maybe all the functions? *)
+    (* TODO: check it one more time *)
+      | Float _    -> 0  (* Constants first *)
+      | Var _      -> 2  (* Then variables *)
+      | Product _  -> 4  (* Then products *)
+      | Sum _      -> 6  (* Then sums *)
+      | Sin _      -> 10  (* Then trig functions *)
+      | Cos _      -> 12
+      | Log _      -> 14  (* Then other functions *)
+      | Exp _      -> 16
+
+      | Pow (x, _) -> expr_category x
+      | Neg e      -> expr_category e 
     in
   
     let cat1 = expr_category e1 in
@@ -87,6 +93,13 @@ let rec (=:=) e1 e2 =
       | Cos a, Cos b
       | Log a, Log b
       | Exp a, Exp b -> expr_compare a b
+
+      (* Special cases for Power and Negation with other expressions *)
+      | Pow(x, _), y | y, Pow(x, _) -> 
+        expr_compare x y
+
+      | Neg(x), y | y, Neg(x) -> 
+        expr_compare x y 
       
       | _ -> failwith "Invalid comparison"
 
@@ -141,22 +154,29 @@ let parenthesize parent_prec child_expr converter =
 
 (* Convert expression to a string for debugging and visualization *)
 let rec string_of_expr expr =
+  (* FIXME: *)
   match expr with
+  | expr when expr =:= e -> "e"
+  | expr when expr =:= pi -> "π"
   | Float x -> string_of_float x
   | Var s -> s
-
+  
   | Neg (Float n) -> string_of_float (-.n)
-  | Neg (Sum es) -> 
-      "- " ^ String.concat " - " (List.map (fun e -> parenthesize 1 e string_of_expr) es)
+  | Neg (Sum es)  -> "-(" ^ string_of_expr (Sum es) ^ ")"
+  | Neg (Product _ as x) -> 
+    "-" ^ parenthesize 6 x string_of_expr
+  | Neg x -> "-" ^ parenthesize 6 x string_of_expr
+
   | Sum es -> 
-      (match es with
+      begin match es with
        | [] -> "0"
        | first :: rest ->
            string_of_expr first ^ 
            String.concat "" 
              (List.map (fun e -> match e with
                | Neg x -> " - " ^ parenthesize 1 x string_of_expr
-               | x -> " + " ^ string_of_expr x) rest))
+               | x -> " + " ^ string_of_expr x) rest)
+       end
   | Product es -> 
       (match es with
        | [] -> "1"
@@ -168,15 +188,18 @@ let rec string_of_expr expr =
                | Pow (x, Float n) when n < 0. -> 
                    " / " ^ parenthesize 2 x string_of_expr
                | x -> " * " ^ parenthesize 2 x string_of_expr) rest))
-  | Neg (Product _ as x) -> 
-      "-" ^ parenthesize 6 x string_of_expr
-  | Neg x -> "-" ^ parenthesize 6 x string_of_expr
+  
   | Exp (Float 1.) -> "e"
   | Exp a -> "exp(" ^ string_of_expr a ^ ")"
+  
   | Log a -> "log(" ^ string_of_expr a ^ ")"
   | Sin a -> "sin(" ^ string_of_expr a ^ ")"
   | Cos a -> "cos(" ^ string_of_expr a ^ ")"
-  | Pow (a, Float n) when n < 0. ->
-      parenthesize 2 a string_of_expr ^ "^" ^ string_of_float n ^ "."
+
+  | Pow (a, Float n) ->
+      if mod_float n 1. = 0. then
+        parenthesize 2 a string_of_expr ^ "^" ^ string_of_int (int_of_float n)
+      else 
+        parenthesize 2 a string_of_expr ^ "^" ^ string_of_float n
   | Pow (a, b) -> 
-      parenthesize 3 a string_of_expr ^ "^" ^ parenthesize 4 b string_of_expr
+      parenthesize 3 a string_of_expr ^ "^{" ^ string_of_expr b ^ "}"

@@ -1,11 +1,16 @@
 open Nomad.Expr
-open Nomad.Constants
 open Nomad.Simplify
 open Nomad.Eval
 open Nomad.Derivatives
 open Nomad.Gradient_descent
 open Nomad.Newton
 open Nomad.Bisection
+
+
+(* Shortcuts for variables *)
+let x = Var "x"
+let y = Var "y"
+let z = Var "z"
 
 
 let test_env () =
@@ -59,6 +64,8 @@ let test_simplify () =
     (x +: x,            Float 2. *: x);
     (Log (Exp x),       x);
     (Exp (Log x),       x);
+    (Sum [Neg (Var "x"); Neg (Var "y"); Var "x"; Var "y"; Var "z"], z);
+    (Sum [Var "x"; Var "y"; Var "z"; Neg (Var "x"); Neg (Var "y")], z);
     
     (* More complex simplifications *)
     (x -: Float (-2.),                   Float 2. +: x);

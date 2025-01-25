@@ -58,6 +58,7 @@ let combine_like_terms terms =
                 [x, x]     -> [x^2]
                 [2, 3]     -> [6] *)
 let combine_like_factors terms =
+  (* TODO: maybe try to do it like combine like terms? ś*)
   let rec combine = function
     | [] -> []
     | [x] -> [x]

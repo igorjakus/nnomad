@@ -1,5 +1,6 @@
 open Expr
 
+
 (* Checks if expression contains division by zero
    Returns true if expression contains:
    - negative power of 0 *)
@@ -11,38 +12,45 @@ let rec check_zero_division = function
   | _ -> false
 
 
+(* Extract numeric coefficient and base expression,
+  For example: 2x -> (2, x), 
+               -x -> (-1, x) *) 
+let rec factor_out_coefficient = function
+  | Float c -> (c, Float 1.)
+  | Neg e ->
+      let (coef, base) = factor_out_coefficient e in
+      (-.coef, base)
+  | Product [Float c; e] ->
+      (c, e)
+  | Product (Float c :: es) ->
+      (c, Product es)
+  | e -> (1., e)
+
+
 (* Combines like terms in a sorted list of expressions
    For example: [2x, 3x] -> [5x]
                 [x, -x]  -> [0]
                 [x, x]   -> [2x] *)
 let combine_like_terms terms =
-  let rec combine = function
-    | [] -> []
-    | [x] -> [x]
-    | t1 :: t2 :: rest ->
-        begin match t1, t2 with
-        (* Handle constant combinations *)
-        | Float n1, Float n2 -> 
-            Float (n1 +. n2) :: combine rest
-        | Neg (Float n1), Float n2 -> 
-            Float (n2 -. n1) :: combine rest
-        | Float n1, Neg (Float n2) -> 
-            Float (n1 -. n2) :: combine rest
-            
-        (* Handle cancellations and combinations *)
-        | x, y when x =:= y -> 
-            Product [Float 2.; x] :: combine rest
-        | x, Neg y when x =:= y -> 
-            Float 0. :: combine rest
-        | Neg x, y when x =:= y -> 
-            Float 0. :: combine rest
-        | x, Neg y -> 
-            x :: Neg y :: combine rest  (* Keep negation explicit *)
-        | x, y -> 
-            x :: combine ( y :: rest)
-        end
+  let table = Hashtbl.create 3 in
+  List.iter (fun t ->
+    (* For each base, accumulate coefficient *)
+    let (coef, base) = factor_out_coefficient t in
+    let old_coef = try Hashtbl.find table base with Not_found -> 0. in
+    Hashtbl.replace table base (old_coef +. coef)
+  ) terms;
+
+  (* Now rebuild expressions, filter out zero sums *)
+  let combined =
+    Hashtbl.fold (fun base coef acc ->
+      if abs_float coef < 1e-12 then acc
+      else if base = Float 1. then Float coef :: acc
+      else if coef = 1. then base :: acc
+      else if coef = -1. then Neg base :: acc
+      else Product [Float coef; base] :: acc
+    ) table []
   in
-  combine terms
+  sort_exprs combined
 
 
 (* Combines like factors in a sorted list of expressions
@@ -75,9 +83,10 @@ let combine_like_factors terms =
   combine terms
 
 
-(* Main collection function that handles Sum and Product
-   - Sorts terms using expr_compare
-   - Combines like terms *)
+(* Collection function that handles Sum and Product
+  - Flattens nested sums/products
+  - Sorts terms using expr_compare
+  - Combines like terms / factors *)
 let collect = function
   | Sum es ->
       let rec flatten_sum = function
@@ -86,7 +95,7 @@ let collect = function
         | [] -> []
       in
       let flattened = flatten_sum es in
-      let sorted = List.sort expr_compare flattened in
+      let sorted = sort_exprs flattened in
       let combined = combine_like_terms sorted in
       begin match combined with
       | [] -> Float 0.  (* Handle empty sum *)
@@ -101,18 +110,25 @@ let collect = function
         | [] -> []
       in
       let flattened = flatten_product es in
-      let sorted = List.sort expr_compare flattened in
+      let sorted = sort_exprs flattened in
       let combined = combine_like_factors sorted in
       begin match combined with
-      | [] -> Float 1.     (* Handle empty product *)
-      | [x] -> x           (* Simplify single term *)
-      | xs -> Product xs   (* Keep multiple terms *)
+      | [] -> Float 1.    (* Handle empty product *)
+      | [x] -> x          (* Simplify single term *)
+      | xs -> Product xs  (* Keep multiple terms *)
       end
 
   | _ -> failwith "improper use of collect"
+  
 
-
-(* Helper function to apply simplify recursively only once *)
+(* Simplification function that applies rules once
+  - Handles error cases (division by zero, log of non-positive)
+  - Identity operations (0, 1, x, x^1, log(exp(x)), etc.)
+  - Constant folding (addition, multiplication, exponentiation, etc.)
+  - Trigonometric identities (sin^2(x) + cos^2(x) = 1)
+  - Negation handling (negation of product, sum, power)
+  - Algebraic simplifications (x + x = 2x, x * x = x^2, etc.)
+  - Recursive simplification and collection *)
 let rec simplify_once expr = 
   (* Error handling *)
   match expr with
@@ -192,7 +208,15 @@ let rec simplify_once expr =
   | Product es -> Product (List.map simplify_once es) |> collect
 
 
-(* Main simplification function that applies rules until no changes *)
+(* Simplification function that applies rules until no change
+  - Adds safety limit to prevent infinite loops 
+  - Handles error cases (division by zero, log of non-positive)
+  - Identity operations (0, 1, x, x^1, log(exp(x)), etc.)
+  - Constant folding (addition, multiplication, exponentiation, etc.)
+  - Trigonometric identities (sin^2(x) + cos^2(x) = 1)
+  - Negation handling (negation of product, sum, power)
+  - Algebraic simplifications (x + x = 2x, x * x = x^2, etc.)
+  - Recursive simplification and collection *)
 let simplify expr =
   let rec simplify_with_limit count expr =
     if count > 100 then expr  (* Add safety limit *)

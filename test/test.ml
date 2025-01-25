@@ -65,7 +65,7 @@ let test_simplify () =
     (Log (Exp x),       x);
     (Exp (Log x),       x);
     (Sum [Neg (x); Neg (y); x; y; z], z);
-    (Sum [x; y; z; Neg (x); Neg (y)], z); (* FIXME: *)
+    (Sum [x; y; z; Neg (x); Neg (y)], z);
     
     (* More complex simplifications *)
     (x -: Float (-2.),                   Float 2. +: x);

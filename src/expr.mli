@@ -24,6 +24,7 @@ val ( /: ) : expr -> expr -> expr
 val ( ^: ) : expr -> expr -> expr
 val ( =:= ) : expr -> expr -> bool
 val expr_compare : expr -> expr -> int
+val sort_exprs : expr list -> expr list
 
 val get_variables : expr -> string list
 val get_variable : expr -> string

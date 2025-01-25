@@ -29,8 +29,11 @@ type equation = expr * expr
 let ( +: ) a b = Sum [a; b]
 let ( -: ) a b = Sum [a; Neg b]
 let ( *: ) a b = Product [a; b]
-let ( /: ) a b = Product [a; Pow (b, Float (-1.))]
 let ( ^: ) x n = Pow (x, n)
+let ( /: ) a b = 
+  match a with
+  | Float 1. -> Pow(b, Float (-1.))
+  | a        -> Product [a; Pow (b, Float (-1.))]
 
 let rec (=:=) e1 e2 =
   match e1, e2 with
@@ -53,7 +56,6 @@ let rec (=:=) e1 e2 =
 
   let rec expr_compare e1 e2 =
     let rec expr_category = function
-    (* TODO: check it one more time *)
       | Float _    -> 0  (* Constants first *)
       | Var _      -> 2  (* Then variables *)
       | Product _  -> 4  (* Then products *)
@@ -78,10 +80,8 @@ let rec (=:=) e1 e2 =
       (* Sum and product comparison *)
       | Sum es1, Sum es2 
       | Product es1, Product es2 ->
-        let sorted1 = List.sort expr_compare es1 in
-        let sorted2 = List.sort expr_compare es2 in
-        List.compare expr_compare sorted1 sorted2
-      
+        List.compare expr_compare (sort_exprs es1) (sort_exprs es2)
+
       (* Pow comparison *)
       | Pow (a1, b1), Pow (a2, b2) -> 
         let cmp = expr_compare a1 a2 in
@@ -102,6 +102,9 @@ let rec (=:=) e1 e2 =
         expr_compare x y 
       
       | _ -> failwith "Invalid comparison"
+
+
+and sort_exprs expr = List.sort expr_compare expr
 
 
 (* Set of strings *)

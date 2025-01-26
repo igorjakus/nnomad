@@ -12,26 +12,26 @@ let rec check_zero_division = function
   | _ -> false
 
 
-(* Extract numeric coefficient and base expression,
-  For example: 2x -> (2, x), 
-               -x -> (-1, x) *) 
-let rec factor_out_coefficient = function
-  | Float c -> (c, Float 1.)
-  | Neg e ->
-      let (coef, base) = factor_out_coefficient e in
-      (-.coef, base)
-  | Product [Float c; e] ->
-      (c, e)
-  | Product (Float c :: es) ->
-      (c, Product es)
-  | e -> (1., e)
-
-
 (* Combines like terms in a sorted list of expressions
    For example: [2x, 3x] -> [5x]
                 [x, -x]  -> [0]
                 [x, x]   -> [2x] *)
 let combine_like_terms terms =
+  (* Extract numeric coefficient and base expression,
+  For example: 2x -> (2, x), 
+               -x -> (-1, x) *) 
+  let rec factor_out_coefficient = function
+    | Float c -> (c, Float 1.)
+    | Neg e ->
+        let (coef, base) = factor_out_coefficient e in
+        (-.coef, base)
+    | Product [Float c; e] ->
+        (c, e)
+    | Product (Float c :: es) ->
+        (c, Product es)
+    | e -> (1., e) 
+  in
+
   let table = Hashtbl.create 3 in
   List.iter (fun t ->
     (* For each base, accumulate coefficient *)
@@ -79,9 +79,10 @@ let combine_like_factors terms =
   let rec update base exp = function
     | [] ->
         (* If numeric exponent is effectively zero, skip it *)
-        (match exp with
+        begin match exp with
          | Float f when abs_float f < 1e-12 -> []
-         | _ -> [base, exp])
+         | _ -> [base, exp]
+        end 
     | (k, old_exp) :: xs ->
         if k =:= base then
           let new_exp = merge_exp old_exp exp in

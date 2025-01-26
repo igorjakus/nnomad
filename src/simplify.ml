@@ -17,6 +17,7 @@ let rec check_zero_division = function
                 [x, -x]  -> [0]
                 [x, x]   -> [2x] *)
 let combine_like_terms terms =
+  (* TODO: don't use Hashtbl *)
   (* Extract numeric coefficient and base expression,
   For example: 2x -> (2, x), 
                -x -> (-1, x) *) 
@@ -58,6 +59,7 @@ let combine_like_terms terms =
                 [x, x]     -> [x^2]
                 [2, 3]     -> [6] *)
 let combine_like_factors terms =
+  (* TODO: Improve readability *)
   let factor_out_power = function
     | Float c -> (c, Float 1., Float 0.)
     | Pow (b, e) -> (1., b, e)

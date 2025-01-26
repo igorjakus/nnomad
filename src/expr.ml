@@ -169,6 +169,7 @@ let is_atomic = function
 
 (* Convert expression to a string for debugging and visualization *)
 let rec string_of_expr expr =
+  (* TODO: better handle fractions *)
   match expr with
   | Float _ as expr when expr =:= e -> "e"
   | Float _ as expr when expr =:= pi -> "π"

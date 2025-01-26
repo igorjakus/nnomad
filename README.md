@@ -4,6 +4,8 @@
 ![OCaml](https://img.shields.io/badge/OCaml-4.14.2%2B-blue.svg)
 ![Dune](https://img.shields.io/badge/Dune-3.17.0-blue.svg)
 
+**N**umerical **O**ptimization, **M**athematics and **A**utomatic **D**ifferentiation library in OCaml!🐫
+
 Nomad is a comprehensive OCaml library designed for symbolic expression manipulation and optimization. It provides functionalities for evaluating expressions, computing derivatives, and performing various optimization algorithms such as Gradient Descent, Newton-Raphson, and the Bisection method. This project serves as a practical assignment for the Functional Programming course at the University of Wrocław.
 
 ## Table of Contents

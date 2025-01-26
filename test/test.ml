@@ -74,6 +74,7 @@ let test_simplify () =
     (Log x +: Log y,                     Log (x *: y));
     ((x ^: Float 3.) /: (x ^: Float 2.), x);
     ((x *: (y ^: Float 2.)) /: (y *: x), y);
+    ((x ^: (Neg(y))) *: y *: (x ^: (Float (-1.) +: y)), Pow(x, Float (-1.)) *: y);
 
     (* Negation handling *)
     (Neg (Neg x),       x);
@@ -85,9 +86,9 @@ let test_simplify () =
     (* (Sin (pi -: x), Sin x); *) (* sin(π-x) = sin(x) *)
 
     (* Division simplifications *)
-    (y /: (x /: y), (Pow(y, Float 2.)) /: x);
+    (y /: (x /: y), Pow(x, Float (-1.)) *: Pow(y, Float 2.));
     (x /: (y /: x), (Pow(x, Float 2.)) /: y);
-    ((x /: y) /: (y /: x), (Pow(x, Float 2.)) /: (y *: y));
+    ((x /: y) /: (y /: x), Pow(x, Float 2.) *: (Pow(y, Float (-2.))));
     
     (* Mixed operations *)
     ((x /: y) *: (y /: x), Float 1.);
@@ -95,7 +96,7 @@ let test_simplify () =
     
     (* Combined simplifications *)
     (* (((x +: y) /: x) -: Float 1., y /: x); *) (* TODO: *)
-    ((x *: y) /: (x *: (y +: Float 1.)), y /: (y +: Float 1.)); (* FIXME: *)
+    ((x *: y) /: (x *: (y +: Float 1.)), y /: (Float 1. +: y));
 
     (* Subtraction simplifications *)
     (Sin x -: Sin x, Float 0.);
@@ -379,7 +380,7 @@ let test_gradient () =
     ((x *: x) +: (y *: y), [("x", Float 2. *: x); ("y", Float 2. *: y)]);
     
     (* Trigonometric expressions *)
-    (Sin x *: Cos y, [("x", Cos x *: Cos y); ("y", Neg(Sin x) *: Sin y)]);
+    (Sin x *: Cos y, [("x", Cos x *: Cos y); ("y", Neg(Sin x *: Sin y))]);
     (Sin (x *: y), [("x", y *: Cos (x *: y)); ("y", x *: Cos (x *: y))]);
     
     (* Exponential and logarithmic *)

@@ -58,30 +58,73 @@ let combine_like_terms terms =
                 [x, x]     -> [x^2]
                 [2, 3]     -> [6] *)
 let combine_like_factors terms =
-  (* TODO: maybe try to do it like combine like terms? ś*)
-  let rec combine = function
-    | [] -> []
-    | [x] -> [x]
-    | Float 0. :: _ -> [Float 0.]
-    | t1 :: t2 :: rest ->
-        begin match t1, t2 with
-        (* Handle constant combinations *)
-        | Float n1, Float n2 -> 
-            Float (n1 *. n2) :: combine rest
-            
-        (* Handle power combinations *)
-        | Pow (x1, n1), Pow (x2, n2) when x1 =:= x2 ->
-            Pow (x1, Sum [n1; n2]) :: combine rest
-        | x, Pow (y, n) when x =:= y ->
-            Pow (x, Sum [Float 1.; n]) :: combine rest
-        | x, y when x =:= y ->
-            Pow (x, Float 2.) :: combine rest
-            
-        (* Keep first term and continue *)
-        | x, _ -> x :: combine (t2 :: rest)
-        end 
+  let factor_out_power = function
+    | Float c -> (c, Float 1., Float 0.)
+    | Pow (b, e) -> (1., b, e)
+    | Neg (Pow (b, e)) -> (-1., b, e)
+    | Neg b -> (-1., b, Float 1.)
+    | b -> (1., b, Float 1.)
   in
-  combine terms
+
+  (* Merge two exponent expressions into a single Sum or Float *)
+  let merge_exp e1 e2 =
+    match e1, e2 with
+    | Float f1, Float f2 -> Float (f1 +. f2)
+    | Float f1, _        -> Sum [Float f1; e2]
+    | _, Float f2        -> Sum [e1; Float f2]
+    | _                  -> Sum [e1; e2]
+  in
+
+  (* Update exponent for a given base in the association list *)
+  let rec update base exp = function
+    | [] ->
+        (* If numeric exponent is effectively zero, skip it *)
+        (match exp with
+         | Float f when abs_float f < 1e-12 -> []
+         | _ -> [base, exp])
+    | (k, old_exp) :: xs ->
+        if k =:= base then
+          let new_exp = merge_exp old_exp exp in
+          match new_exp with
+          | Float f when abs_float f < 1e-12 -> xs
+          | _ -> (k, new_exp) :: xs
+        else
+          (k, old_exp) :: update base exp xs
+  in
+
+  (* Fold over the terms to build (numeric factor, exponents map) *)
+  let (num_acc, assoc) =
+    List.fold_left (fun (acc_coef, assoc) t ->
+      let (coef, base, exp) = factor_out_power t in
+      let new_coef =
+        let tmp = acc_coef *. coef in
+        if abs_float tmp < 1e-12 then 0. else tmp
+      in
+      let assoc' = update base exp assoc in
+      (new_coef, assoc')
+    ) (1., []) terms
+  in
+
+  (* If numeric factor ~ 0, entire product is 0 *)
+  if abs_float num_acc < 1e-12 then
+    [Float 0.]
+  else
+    (* Rebuild the product from the association list *)
+    let factors =
+      List.fold_left (fun acc (base, exp) ->
+        match exp with
+        | Float f when abs_float f < 1e-12 -> acc
+        | Float 0. -> acc
+        | Float 1. -> base :: acc
+        | _ -> Pow (base, exp) :: acc
+      ) [] assoc
+    in
+    let final =
+      if abs_float (num_acc -. 1.) < 1e-12 then factors
+      else if abs_float (num_acc +. 1.) < 1e-12 then [Neg (Product factors)]
+      else Float num_acc :: factors
+    in
+    sort_exprs final
 
 
 (* Collection function that handles Sum and Product

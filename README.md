@@ -15,7 +15,6 @@ Nomad is a comprehensive OCaml library designed for symbolic expression manipula
 - [Installation](#installation)
 - [Usage](#usage)
 - [Testing](#testing)
-- [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [License](#license)
 - [Acknowledgments](#acknowledgments)

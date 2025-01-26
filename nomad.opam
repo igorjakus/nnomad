@@ -8,6 +8,6 @@ license: "MIT"
 homepage: "https://github.com/igorjakus/nomad"
 bug-reports: "https://github.com/igorjakus/nomad/issues"
 depends: [
-  # "ocaml" {>= "5.2.1"}
-  # "dune" {>= "3.17.0"}
+  "ocaml" {>= "4.14.2"}
+  "dune" {>= "3.17.0"}
 ]

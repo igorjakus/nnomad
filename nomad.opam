@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "nomad"
-version: "~dev"
+version: "1.0.0"
 synopsis: "Numerical optimization, mathematics and automatic differentiation library"
 maintainer: "Igor Jakus <igorjakus@protonmail.com>"
 authors: ["Igor Jakus"]

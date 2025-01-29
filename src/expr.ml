@@ -161,15 +161,14 @@ let parenthesize parent_prec child_expr converter =
     child_str
 
 
-(* Helper to check if expression is a simple variable or float *)
+(* Check if an expression is leaf in AST *)
 let is_atomic = function
-  | Var _ | Float _ -> true
+  | Var _ | Float _ | Pow(Var _, Float _) | Pow(Float _, Float _) -> true
   | _ -> false
 
 
 (* Convert expression to a string for debugging and visualization *)
 let rec string_of_expr expr =
-  (* TODO: better handle fractions *)
   match expr with
   | Float _ as expr when expr =:= e -> "e"
   | Float _ as expr when expr =:= pi -> "π"
@@ -197,43 +196,56 @@ let rec string_of_expr expr =
               | x -> " + " ^ string_of_expr x) rest)
       end
 
-  | Product es -> 
-    begin match es with
-      | [] -> "1"
-      | [x] -> string_of_expr x
-      | first :: rest ->
-          parenthesize 2 first string_of_expr ^ 
-          String.concat "" 
-            (List.map (fun e -> match e with
-              | Pow (x, Float n) when n = -1. ->
-                  if is_atomic x then
-                    " / " ^ string_of_expr x
-                  else
-                    " / (" ^ string_of_expr x ^ ")"
-              | Pow (x, Float n) when n < 0. ->
-                  if is_atomic x then
-                    " * " ^ string_of_expr (Pow (x, Float n))
-                  else
-                    " * (" ^ string_of_expr (Pow (x, Float n)) ^ ")"
-              | Float f when f < 0. ->
-                  " * (" ^ string_of_expr e ^ ")"
-              | Neg _ ->
-                  " * (" ^ string_of_expr e ^ ")"
-              | Product _ ->
-                  " * (" ^ string_of_expr e ^ ")"
-              | x -> " * " ^ parenthesize 2 x string_of_expr) rest) 
-    end
+  | Product es ->
+    let numerator, denominator = 
+      List.partition
+        (fun e -> match e with Pow (_, Float n) when n < 0. -> false | _ -> true)
+        es
+    in
 
-  | Pow (a, Neg b) ->
-      parenthesize 3 a string_of_expr ^ "^{" ^ "-" ^ string_of_expr b ^ "}"
-  | Pow (a, Float n) ->
-      let str_exponent =
-        string_of_float_simpl n
+    let den_str = 
+      match denominator with
+      | [] -> ""
+      | _ ->
+        let adjusted = List.map (fun x -> match x with
+          | Pow (base, Float (-1.)) -> base
+          | Pow (base, Float n) -> Pow (base, Float (-.n))
+          | _ -> failwith "string_of_expr: wrong expr in denominator") 
+          denominator
+        in
+
+        let den = String.concat " * " (List.map string_of_expr adjusted) in
+
+        match adjusted with
+        | [] -> ""
+        | [e] when is_atomic e -> den
+        | _ -> "(" ^ den ^ ")"
+    in
+
+    let num_str = 
+      match numerator with
+        | [] -> "1"
+        | [e] when is_atomic e || den_str = "" -> string_of_expr e
+        | [e] -> "(" ^ string_of_expr e ^ ")"
+        | _ when den_str = "" -> String.concat " * " (List.map (fun x -> parenthesize 2 x string_of_expr) numerator)
+        | _ -> "(" ^ String.concat " * " (List.map (fun x -> parenthesize 2 x string_of_expr) numerator) ^ ")"
+    in
+    if den_str = "" then num_str
+    else num_str ^ " / " ^ den_str
+
+  | Pow (base, Float 1.) -> 
+      string_of_expr base
+
+  | Pow (base, Float -1.) ->
+      "1 / " ^ parenthesize 2 base string_of_expr
+
+  | Pow (a, Float n) when n <> 1. && n <> -1. ->
+      let str_exponent = 
+        if n < 0. then "{" ^ (string_of_float_simpl n) ^ "}"
+        else string_of_float_simpl n
       in
-      if n < 0. then
-        parenthesize 3 a string_of_expr ^ "^{" ^ str_exponent ^ "}"
-      else
-        parenthesize 3 a string_of_expr ^ "^" ^ str_exponent
+      parenthesize 3 a string_of_expr ^ "^" ^ str_exponent
+
   | Pow (a, Var x) -> 
       parenthesize 3 a string_of_expr ^ "^" ^ x
   | Pow (a, b) -> 

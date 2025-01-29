@@ -138,8 +138,8 @@ let test_string_of_expr () =
     (* Products *)
     (Product [x; y; z], "x * y * z");
     (Product [x; y; z; Float 2.], "x * y * z * 2");
-    (Product [x; y; z; Float (-2.13)], "x * y * z * (-2.13)");
-    (Product [x; y; z; Float (-2.13); Float 3.], "x * y * z * (-2.13) * 3");
+    (Product [x; y; z; Float (-2.13)], "x * y * z * -2.13");
+    (Product [x; y; z; Float (-2.13); Float 3.], "x * y * z * -2.13 * 3");
     (Product [x; y +: z; x], "x * (y + z) * x");
 
     (* Negation *)
@@ -179,7 +179,7 @@ let test_string_of_expr () =
     (x ^: (y /: z), "x^{y / z}");
     (x ^: (y ^: z), "x^{y^z}");
     (x ^: (Neg y), "x^{-y}");
-    (Float 24. *: Pow (x, Float (-5.)), "24 * x^{-5}");
+    (Float 24. *: Pow (x, Float (-5.)), "24 / x^5");
 
     (* Exponential, logarithm and trigonometric *)
     (Exp x, "exp(x)");
@@ -197,8 +197,10 @@ let test_string_of_expr () =
     (x /: Float (-2.5), "x / -2.5");
     (x /: (y +: Float 2.), "x / (y + 2)");
     (y /: (x /: y), "y / (x / y)");
-    ((x /: y) /: (y /: x), "(x / y) / (y / x)"); (* FIXME: *)
-    ((x *: y) /: (y *: x), "(x * y) / (y * x)"); (* FIXME: *)
+    ((x /: y) /: (y /: x), "(x / y) / (y / x)");
+    ((x *: y) /: (y *: x), "(x * y) / (y * x)");
+
+    (* Mixed expressions *)
     ((x +: y) /: x, "(x + y) / x");
 
     (* Mixed expressions *)
